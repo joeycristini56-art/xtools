@@ -17,42 +17,6 @@ jobs:
         flutter-version: '3.24.5'
         channel: 'stable'
 
-    - name: Setup Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.21'
-
-    - name: Build Go libraries for iOS
-      run: |
-        mkdir -p xtools/backend/interpreters/ios/{arm64,simulator,frameworks}
-        
-        cd xtools/backend/go/runtime
-        GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../interpreters/ios/arm64/libxboxchecker.dylib ffi_export.go
-        GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../interpreters/ios/simulator/libxboxchecker.dylib ffi_export.go
-
-        cd ../toolbot
-        GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../interpreters/ios/arm64/libtoolbot.dylib ffi_export.go
-        GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../interpreters/ios/simulator/libtoolbot.dylib ffi_export.go
-
-    - name: Create universal frameworks
-      run: |
-        mkdir -p xtools/backend/interpreters/ios/frameworks
-
-        mkdir -p xtools/backend/interpreters/ios/frameworks/libxboxchecker.framework
-        lipo -create \
-          xtools/backend/interpreters/ios/arm64/libxboxchecker.dylib \
-          xtools/backend/interpreters/ios/simulator/libxboxchecker.dylib \
-          -output xtools/backend/interpreters/ios/frameworks/libxboxchecker.framework/libxboxchecker
-
-        mkdir -p xtools/backend/interpreters/ios/frameworks/libtoolbot.framework
-        lipo -create \
-          xtools/backend/interpreters/ios/arm64/libtoolbot.dylib \
-          xtools/backend/interpreters/ios/simulator/libtoolbot.dylib \
-          -output xtools/backend/interpreters/ios/frameworks/libtoolbot.framework/libtoolbot
-
-        cp xtools/backend/interpreters/linux/libxboxchecker.h xtools/backend/interpreters/ios/frameworks/libxboxchecker.framework/
-        cp xtools/backend/interpreters/linux/libtoolbot.h xtools/backend/interpreters/ios/frameworks/libtoolbot.framework/
-
     - name: Build iOS app
       run: |
         cd xtools
