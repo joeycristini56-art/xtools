@@ -24,9 +24,9 @@ jobs:
 
     - name: Build Go libraries for iOS
       run: |
-        mkdir -p backend/interpreters/ios/{arm64,simulator,frameworks}
+        mkdir -p xtools/backend/interpreters/ios/{arm64,simulator,frameworks}
         
-        cd backend/go/runtime
+        cd xtools/backend/go/runtime
         GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../interpreters/ios/arm64/libxboxchecker.dylib ffi_export.go
         GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../interpreters/ios/simulator/libxboxchecker.dylib ffi_export.go
 
@@ -36,33 +36,32 @@ jobs:
 
     - name: Create universal frameworks
       run: |
-        mkdir -p backend/interpreters/ios/frameworks
+        mkdir -p xtools/backend/interpreters/ios/frameworks
 
-        mkdir -p backend/interpreters/ios/frameworks/libxboxchecker.framework
+        mkdir -p xtools/backend/interpreters/ios/frameworks/libxboxchecker.framework
         lipo -create \
-          backend/interpreters/ios/arm64/libxboxchecker.dylib \
-          backend/interpreters/ios/simulator/libxboxchecker.dylib \
-          -output backend/interpreters/ios/frameworks/libxboxchecker.framework/libxboxchecker
+          xtools/backend/interpreters/ios/arm64/libxboxchecker.dylib \
+          xtools/backend/interpreters/ios/simulator/libxboxchecker.dylib \
+          -output xtools/backend/interpreters/ios/frameworks/libxboxchecker.framework/libxboxchecker
 
-        mkdir -p backend/interpreters/ios/frameworks/libtoolbot.framework
+        mkdir -p xtools/backend/interpreters/ios/frameworks/libtoolbot.framework
         lipo -create \
-          backend/interpreters/ios/arm64/libtoolbot.dylib \
-          backend/interpreters/ios/simulator/libtoolbot.dylib \
-          -output backend/interpreters/ios/frameworks/libtoolbot.framework/libtoolbot
+          xtools/backend/interpreters/ios/arm64/libtoolbot.dylib \
+          xtools/backend/interpreters/ios/simulator/libtoolbot.dylib \
+          -output xtools/backend/interpreters/ios/frameworks/libtoolbot.framework/libtoolbot
 
-        cp backend/interpreters/linux/libxboxchecker.h backend/interpreters/ios/frameworks/libxboxchecker.framework/
-        cp backend/interpreters/linux/libtoolbot.h backend/interpreters/ios/frameworks/libtoolbot.framework/
+        cp xtools/backend/interpreters/linux/libxboxchecker.h xtools/backend/interpreters/ios/frameworks/libxboxchecker.framework/
+        cp xtools/backend/interpreters/linux/libtoolbot.h xtools/backend/interpreters/ios/frameworks/libtoolbot.framework/
 
     - name: Build iOS app
       run: |
+        cd xtools
         flutter pub get
         flutter build ios --release --no-codesign
 
-    - name: Upload iOS frameworks and app
+    - name: Upload iOS app
       uses: actions/upload-artifact@v4
       with:
         name: ios-app
-        path: |
-          backend/interpreters/ios/frameworks/
-          build/ios/iphoneos/Runner.app
+        path: xtools/build/ios/iphoneos/Runner.app
         retention-days: 7

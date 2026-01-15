@@ -24,13 +24,14 @@ jobs:
 
     - name: Build Go libraries
       run: |
-        cd backend/go/runtime
+        cd xtools/backend/go/runtime
         go build -buildmode=c-shared -o ../interpreters/windows/libxboxchecker.dll ffi_export.go
         cd ../toolbot
         go build -buildmode=c-shared -o ../interpreters/windows/libtoolbot.dll ffi_export.go
 
     - name: Build Windows app
       run: |
+        cd xtools
         flutter pub get
         flutter build windows --release
 
@@ -38,5 +39,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: windows-app
-        path: build/windows/x64/runner/Release/
+        path: xtools/build/windows/x64/runner/Release/
         retention-days: 7
