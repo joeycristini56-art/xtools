@@ -1,0 +1,68 @@
+name: Build iOS App
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.5'
+        channel: 'stable'
+
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Build Go libraries for iOS
+      run: |
+        mkdir -p backend/interpreters/ios/{arm64,simulator,frameworks}
+        
+        cd backend/go/runtime
+        GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../interpreters/ios/arm64/libxboxchecker.dylib ffi_export.go
+        GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../interpreters/ios/simulator/libxboxchecker.dylib ffi_export.go
+
+        cd ../toolbot
+        GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../interpreters/ios/arm64/libtoolbot.dylib ffi_export.go
+        GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../interpreters/ios/simulator/libtoolbot.dylib ffi_export.go
+
+    - name: Create universal frameworks
+      run: |
+        mkdir -p backend/interpreters/ios/frameworks
+
+        mkdir -p backend/interpreters/ios/frameworks/libxboxchecker.framework
+        lipo -create \
+          backend/interpreters/ios/arm64/libxboxchecker.dylib \
+          backend/interpreters/ios/simulator/libxboxchecker.dylib \
+          -output backend/interpreters/ios/frameworks/libxboxchecker.framework/libxboxchecker
+
+        mkdir -p backend/interpreters/ios/frameworks/libtoolbot.framework
+        lipo -create \
+          backend/interpreters/ios/arm64/libtoolbot.dylib \
+          backend/interpreters/ios/simulator/libtoolbot.dylib \
+          -output backend/interpreters/ios/frameworks/libtoolbot.framework/libtoolbot
+
+        cp backend/interpreters/linux/libxboxchecker.h backend/interpreters/ios/frameworks/libxboxchecker.framework/
+        cp backend/interpreters/linux/libtoolbot.h backend/interpreters/ios/frameworks/libtoolbot.framework/
+
+    - name: Build iOS app
+      run: |
+        flutter pub get
+        flutter build ios --release --no-codesign
+
+    - name: Upload iOS frameworks and app
+      uses: actions/upload-artifact@v4
+      with:
+        name: ios-app
+        path: |
+          backend/interpreters/ios/frameworks/
+          build/ios/iphoneos/Runner.app
+        retention-days: 7
