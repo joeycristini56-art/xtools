@@ -20,13 +20,12 @@ jobs:
       run: |
         mkdir -p backend/interpreters/ios/{arm64,simulator,frameworks}
         
-        cd backend/go/runtime
-        GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../interpreters/ios/arm64/libxboxchecker.dylib ffi_simple.go
-        GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../interpreters/ios/simulator/libxboxchecker.dylib ffi_simple.go
+        cd backend/interpreters/ffi
+        GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../ios/arm64/libxboxchecker.dylib ffi_export_runtime.go
+        GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../ios/simulator/libxboxchecker.dylib ffi_export_runtime.go
 
-        cd ../toolbot
-        GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../interpreters/ios/arm64/libtoolbot.dylib ffi_export.go
-        GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../interpreters/ios/simulator/libtoolbot.dylib ffi_export.go
+        GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../ios/arm64/libtoolbot.dylib ffi_export_toolbot.go
+        GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../ios/simulator/libtoolbot.dylib ffi_export_toolbot.go
 
     - name: Create universal frameworks
       run: |
