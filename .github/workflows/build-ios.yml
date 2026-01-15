@@ -22,11 +22,16 @@ jobs:
         cd xtools
         mkdir -p backend/interpreters/ios/{arm64,simulator,frameworks}
         
-        # Navigate to the ffi directory
-        cd backend/interpreters/ffi
-        
-        # Fix missing go.sum entries (e.g., goquery)
+        # 1. Tidy modules in their respective source folders
+        cd backend/go/runtime
         go mod tidy
+        
+        cd ../toolbot
+        go mod tidy
+
+        # 2. Navigate to the FFI directory to perform the builds
+        # Path from toolbot to ffi is ../../interpreters/ffi
+        cd ../../interpreters/ffi
         
         # Build xboxchecker (using ffi_export_runtime.go)
         GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../ios/arm64/libxboxchecker.dylib ffi_export_runtime.go
