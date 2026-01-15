@@ -1,4 +1,4 @@
-name: Build iOS Libraries
+name: Build iOS App
 
 on:
   workflow_dispatch:
@@ -11,62 +11,58 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.5'
+        channel: 'stable'
+
     - name: Setup Go
       uses: actions/setup-go@v5
       with:
         go-version: '1.21'
-        cache: true
 
-    - name: Build iOS libraries
+    - name: Build Go libraries for iOS
       run: |
-        cd xtools
         mkdir -p backend/interpreters/ios/{arm64,simulator,frameworks}
         
-        # 1. Tidy modules in their respective source folders
         cd backend/go/runtime
-        go mod tidy
-        
+        GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../interpreters/ios/arm64/libxboxchecker.dylib ffi_export.go
+        GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../interpreters/ios/simulator/libxboxchecker.dylib ffi_export.go
+
         cd ../toolbot
-        go mod tidy
-
-        # 2. Navigate to the FFI directory to perform the builds
-        # Path from toolbot to ffi is ../../interpreters/ffi
-        cd ../../interpreters/ffi
-        
-        # Build xboxchecker (using ffi_export_runtime.go)
-        GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../ios/arm64/libxboxchecker.dylib ffi_export_runtime.go
-        GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../ios/simulator/libxboxchecker.dylib ffi_export_runtime.go
-
-        # Build toolbot (using ffi_export_toolbot.go)
-        GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../ios/arm64/libtoolbot.dylib ffi_export_toolbot.go
-        GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../ios/simulator/libtoolbot.dylib ffi_export_toolbot.go
+        GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../interpreters/ios/arm64/libtoolbot.dylib ffi_export.go
+        GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -buildmode=c-shared -o ../interpreters/ios/simulator/libtoolbot.dylib ffi_export.go
 
     - name: Create universal frameworks
       run: |
-        cd xtools
         mkdir -p backend/interpreters/ios/frameworks
 
-        # Create xboxchecker framework
         mkdir -p backend/interpreters/ios/frameworks/libxboxchecker.framework
         lipo -create \
           backend/interpreters/ios/arm64/libxboxchecker.dylib \
           backend/interpreters/ios/simulator/libxboxchecker.dylib \
           -output backend/interpreters/ios/frameworks/libxboxchecker.framework/libxboxchecker
 
-        # Create toolbot framework
         mkdir -p backend/interpreters/ios/frameworks/libtoolbot.framework
         lipo -create \
           backend/interpreters/ios/arm64/libtoolbot.dylib \
           backend/interpreters/ios/simulator/libtoolbot.dylib \
           -output backend/interpreters/ios/frameworks/libtoolbot.framework/libtoolbot
 
-        # Copy Headers
         cp backend/interpreters/linux/libxboxchecker.h backend/interpreters/ios/frameworks/libxboxchecker.framework/
         cp backend/interpreters/linux/libtoolbot.h backend/interpreters/ios/frameworks/libtoolbot.framework/
 
-    - name: Upload iOS frameworks
+    - name: Build iOS app
+      run: |
+        flutter pub get
+        flutter build ios --release --no-codesign
+
+    - name: Upload iOS frameworks and app
       uses: actions/upload-artifact@v4
       with:
-        name: ios-frameworks
-        path: xtools/backend/interpreters/ios/frameworks/
+        name: ios-app
+        path: |
+          backend/interpreters/ios/frameworks/
+          build/ios/iphoneos/Runner.app
         retention-days: 7
