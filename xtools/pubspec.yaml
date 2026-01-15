@@ -35,23 +35,3 @@ flutter:
     - assets/icons/
   
   # iOS framework configuration
-  plugin:
-    platforms:
-      ios:
-        pluginClass: XToolsPlugin
-
-# FFI configuration for ffigen
-ffigen:
-  name: XToolsFFI
-  description: XTools FFI bindings
-  output: 'lib/bindings/ffi_bindings.dart'
-  headers:
-    entry-points:
-      - 'interpreters/python/xtools_ffi.h'
-      - 'interpreters/go/libxboxchecker.h'
-      - 'interpreters/go/libtoolbot.h'
-  preamble: |
-    // ignore_for_file: non_constant_identifier_names
-  llvm-path:
-    - /usr/lib/llvm-14/lib
-    - /usr/local/opt/llvm/lib
