@@ -1,0 +1,57 @@
+name: xtools
+description: A production-grade cross-platform Flutter application integrating Python and Go tools.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  http: ^1.2.0
+  dio: ^5.4.0
+  file_picker: ^6.0.0
+  shared_preferences: ^2.2.2
+  flutter_secure_storage: ^9.0.0
+  path_provider: ^2.1.1
+  url_launcher: ^6.1.2
+  fluttertoast: ^8.2.4
+  process_run: ^0.13.0
+  provider: ^6.1.1
+  process: ^5.0.2
+  ffigen: ^11.0.0
+  ffi: ^2.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icons/
+  
+  # iOS framework configuration
+  plugin:
+    platforms:
+      ios:
+        pluginClass: XToolsPlugin
+
+# FFI configuration for ffigen
+ffigen:
+  name: XToolsFFI
+  description: XTools FFI bindings
+  output: 'lib/bindings/ffi_bindings.dart'
+  headers:
+    entry-points:
+      - 'interpreters/python/xtools_ffi.h'
+      - 'interpreters/go/libxboxchecker.h'
+      - 'interpreters/go/libtoolbot.h'
+  preamble: |
+    // ignore_for_file: non_constant_identifier_names
+  llvm-path:
+    - /usr/lib/llvm-14/lib
+    - /usr/local/opt/llvm/lib

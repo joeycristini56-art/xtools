@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="grid">
+    <div class="card">
+        <h2 class="card-title">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M12 6v6l4 2"></path>
+            </svg>
+            API Status
+        </h2>
+        <div class="card-content">
+            <div class="status-indicator status-healthy">
+                <span class="status-dot"></span>
+                {{ status }}
+            </div>
+            <div class="metric">
+                <span class="metric-label">Version</span>
+                <span class="metric-value">{{ version }}</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Name</span>
+                <span class="metric-value">{{ name }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 class="card-title">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 12l2 2 4-4"></path>
+                <path d="M21 12c-1 0-3-1-3-3s2-3 3-3 3 1 3 3-2 3-3 3"></path>
+                <path d="M3 12c1 0 3-1 3-3s-2-3-3-3-3 1-3 3 2 3 3 3"></path>
+            </svg>
+            CAPTCHA Solvers
+        </h2>
+        <div class="card-content">
+            <p>Advanced AI-powered CAPTCHA solving capabilities:</p>
+            <ul style="margin-top: 1rem; padding-left: 1.5rem; color: var(--text-secondary);">
+                <li>Text-based CAPTCHAs with OCR</li>
+                <li>Image grid recognition</li>
+                <li>Audio CAPTCHA processing</li>
+                <li>reCAPTCHA v2 & v3</li>
+                <li>Cloudflare Turnstile</li>
+                <li>FunCaptcha/Arkose Labs</li>
+                <li>Slider CAPTCHAs</li>
+                <li>DataDome challenges</li>
+                <li>Math problem solving</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 class="card-title">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14,2 14,8 20,8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10,9 9,9 8,9"></polyline>
+            </svg>
+            Quick Start
+        </h2>
+        <div class="card-content">
+            <p>Get started with the XorthonL API:</p>
+            <div style="margin-top: 1rem;">
+                <a href="{{ docs_url }}" class="btn btn-primary">View API Documentation</a>
+            </div>
+            <div style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted);">
+                <p>Example API endpoint:</p>
+                <code style="background: var(--accent-bg); padding: 0.5rem; border-radius: 4px; display: block; margin-top: 0.5rem;">
+                    POST /captcha/solve
+                </code>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 class="card-title">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="22,12 18,12 15,21 9,3 6,12 2,12"></polyline>
+            </svg>
+            System Health
+        </h2>
+        <div class="card-content">
+            <p>Monitor system performance and health:</p>
+            <div style="margin-top: 1rem;">
+                <a href="{{ health_check }}" class="btn btn-primary">Health Dashboard</a>
+            </div>
+            <div style="margin-top: 1rem;">
+                <a href="/metrics" class="btn btn-secondary">Prometheus Metrics</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2 class="card-title">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+        </svg>
+        Features & Capabilities
+    </h2>
+    <div class="card-content">
+        <div class="grid" style="margin-top: 1rem;">
+            <div>
+                <h3 style="color: var(--purple-primary); margin-bottom: 0.5rem;">High Performance</h3>
+                <p style="font-size: 0.9rem; color: var(--text-secondary);">
+                    Optimized for speed and accuracy with advanced AI models and efficient processing pipelines.
+                </p>
+            </div>
+            <div>
+                <h3 style="color: var(--purple-primary); margin-bottom: 0.5rem;">Multiple Formats</h3>
+                <p style="font-size: 0.9rem; color: var(--text-secondary);">
+                    Support for all major CAPTCHA types including text, image, audio, and interactive challenges.
+                </p>
+            </div>
+            <div>
+                <h3 style="color: var(--purple-primary); margin-bottom: 0.5rem;">RESTful API</h3>
+                <p style="font-size: 0.9rem; color: var(--text-secondary);">
+                    Clean, well-documented REST API with comprehensive error handling and status reporting.
+                </p>
+            </div>
+            <div>
+                <h3 style="color: var(--purple-primary); margin-bottom: 0.5rem;">Real-time Monitoring</h3>
+                <p style="font-size: 0.9rem; color: var(--text-secondary);">
+                    Built-in health checks, metrics, and monitoring for production deployments.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

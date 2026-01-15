@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Prometheus Metrics - Login{% endblock %}
+
+{% block content %}
+<style>
+    .login-container {
+        max-width: 400px;
+        margin: 2rem auto;
+        padding: 2rem;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(139, 69, 255, 0.3);
+        border: 1px solid rgba(139, 69, 255, 0.2);
+    }
+
+    .login-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .login-header h1 {
+        color: var(--purple-primary);
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 0 20px rgba(139, 69, 255, 0.5);
+    }
+
+    .login-header p {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        display: block;
+        color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        background: rgba(0, 0, 0, 0.3);
+        border: 2px solid rgba(139, 69, 255, 0.3);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        box-sizing: border-box;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: var(--purple-primary);
+        box-shadow: 0 0 0 3px rgba(139, 69, 255, 0.1);
+        background: rgba(0, 0, 0, 0.5);
+    }
+
+    .login-button {
+        width: 100%;
+        padding: 0.75rem;
+        background: linear-gradient(135deg, var(--purple-primary) 0%, var(--purple-secondary) 100%);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .login-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(139, 69, 255, 0.4);
+    }
+
+    .login-button:active {
+        transform: translateY(0);
+    }
+
+    .error-message {
+        background: rgba(255, 59, 48, 0.1);
+        border: 1px solid rgba(255, 59, 48, 0.3);
+        color: #ff3b30;
+        padding: 0.75rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+        text-align: center;
+    }
+
+    .security-notice {
+        background: rgba(139, 69, 255, 0.1);
+        border: 1px solid rgba(139, 69, 255, 0.3);
+        color: var(--purple-primary);
+        padding: 0.75rem;
+        border-radius: 8px;
+        margin-top: 1rem;
+        font-size: 0.8rem;
+        text-align: center;
+    }
+
+    .prometheus-icon {
+        width: 60px;
+        height: 60px;
+        margin: 0 auto 1rem;
+        background: linear-gradient(135deg, var(--purple-primary) 0%, var(--purple-secondary) 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 5px 15px rgba(139, 69, 255, 0.3);
+    }
+
+    .prometheus-icon svg {
+        width: 30px;
+        height: 30px;
+        color: white;
+    }
+</style>
+
+<div class="login-container">
+    <div class="login-header">
+        <div class="prometheus-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 3v18h18"></path>
+                <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path>
+            </svg>
+        </div>
+        <h1>Prometheus Metrics</h1>
+        <p>Secure access to system monitoring data</p>
+    </div>
+
+    {% if error %}
+    <div class="error-message">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="post" action="/metrics/prometheus/login">
+        <div class="form-group">
+            <label for="password" class="form-label">Access Password</label>
+            <input 
+                type="password" 
+                id="password" 
+                name="password" 
+                class="form-input" 
+                placeholder="Enter your password"
+                required
+                autocomplete="current-password"
+            >
+        </div>
+
+        <button type="submit" class="login-button">
+            Access Metrics Dashboard
+        </button>
+    </form>
+
+    <div class="security-notice">
+        <strong>🔒 Secure Access:</strong> This dashboard provides access to sensitive system metrics and monitoring data.
+    </div>
+</div>
+
+<script>
+    // Focus on password field when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('password').focus();
+    });
+
+    // Handle form submission with loading state
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const button = document.querySelector('.login-button');
+        button.innerHTML = 'Authenticating...';
+        button.disabled = true;
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,583 @@
+<html>
+<head>
+    <title>XorthonL Admin Dashboard</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%); 
+            margin: 0; 
+            padding: 20px; 
+            min-height: 100vh;
+            color: #e6e6fa;
+        }
+        .header { 
+            background: linear-gradient(145deg, #2d1b69 0%, #1a1a2e 100%); 
+            padding: 25px; 
+            border-radius: 15px; 
+            margin-bottom: 25px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border: 1px solid rgba(138, 43, 226, 0.2);
+        }
+        .header h1 { 
+            margin: 0; 
+            color: #e6e6fa; 
+            font-size: 2.2em;
+            text-shadow: 0 0 20px rgba(138, 43, 226, 0.5);
+        }
+        .header .logout { 
+            float: right; 
+            background: linear-gradient(135deg, #dc3545 0%, #a71e2a 100%); 
+            color: white; 
+            padding: 10px 20px; 
+            text-decoration: none; 
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        .header .logout:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
+        }
+        .stats { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+            gap: 20px; 
+            margin-bottom: 30px; 
+        }
+        .stat-card { 
+            background: linear-gradient(145deg, #2d1b69 0%, #1a1a2e 100%); 
+            padding: 25px; 
+            border-radius: 15px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3); 
+            text-align: center;
+            border: 1px solid rgba(138, 43, 226, 0.2);
+            transition: transform 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        .stat-card h3 { 
+            margin: 0 0 15px 0; 
+            color: #b19cd9; 
+            font-size: 1.1em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .stat-card .number { 
+            font-size: 2.5em; 
+            font-weight: bold; 
+            color: #8a2be2;
+            text-shadow: 0 0 15px rgba(138, 43, 226, 0.5);
+        }
+        .section { 
+            background: linear-gradient(145deg, #2d1b69 0%, #1a1a2e 100%); 
+            padding: 25px; 
+            border-radius: 15px; 
+            margin-bottom: 25px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border: 1px solid rgba(138, 43, 226, 0.2);
+        }
+        .section h2 { 
+            margin-top: 0; 
+            color: #e6e6fa; 
+            font-size: 1.8em;
+            text-shadow: 0 0 10px rgba(138, 43, 226, 0.3);
+        }
+        .form-inline { 
+            display: grid; 
+            grid-template-columns: 2fr 2fr 1fr 1fr; 
+            gap: 15px; 
+            align-items: end; 
+            margin-bottom: 20px; 
+        }
+        .form-group label { 
+            display: block; 
+            margin-bottom: 8px; 
+            font-weight: 600; 
+            color: #b19cd9;
+        }
+        .form-group input, .form-group textarea { 
+            width: 100%; 
+            padding: 12px; 
+            border: 2px solid rgba(138, 43, 226, 0.3); 
+            border-radius: 8px; 
+            box-sizing: border-box;
+            background: rgba(0, 0, 0, 0.3);
+            color: #e6e6fa;
+            transition: all 0.3s ease;
+        }
+        .form-group input:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #8a2be2;
+            box-shadow: 0 0 10px rgba(138, 43, 226, 0.4);
+        }
+        .btn { 
+            padding: 12px 24px; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            text-decoration: none; 
+            display: inline-block;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .btn-primary { 
+            background: linear-gradient(135deg, #8a2be2 0%, #4b0082 100%); 
+            color: white; 
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #9932cc 0%, #6a0dad 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(138, 43, 226, 0.4);
+        }
+        .btn-danger { 
+            background: linear-gradient(135deg, #dc3545 0%, #a71e2a 100%); 
+            color: white; 
+        }
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
+        }
+        .table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .table th, .table td { 
+            padding: 15px; 
+            text-align: left; 
+            border-bottom: 1px solid rgba(138, 43, 226, 0.2); 
+        }
+        .table th { 
+            background: linear-gradient(135deg, #4b0082 0%, #2d1b69 100%); 
+            font-weight: bold; 
+            color: #e6e6fa;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .table td {
+            color: #b19cd9;
+        }
+        .table tr:hover {
+            background: rgba(138, 43, 226, 0.1);
+        }
+        .api-key { 
+            font-family: 'Courier New', monospace; 
+            background: rgba(0, 0, 0, 0.4); 
+            padding: 6px 12px; 
+            border-radius: 6px;
+            color: #8a2be2;
+            border: 1px solid rgba(138, 43, 226, 0.3);
+        }
+        .status-active { 
+            color: #00ff88; 
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+        .status-inactive { 
+            color: #ff6b6b; 
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+        }
+        .alert { 
+            padding: 15px; 
+            border-radius: 10px; 
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        .alert-success { 
+            background: linear-gradient(135deg, #0a4d0a 0%, #064406 100%); 
+            color: #00ff88; 
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+        .alert-error { 
+            background: linear-gradient(135deg, #4a0e0e 0%, #2d0a0a 100%); 
+            color: #ff6b6b; 
+            border: 1px solid rgba(255, 107, 107, 0.3);
+        }
+        @media (max-width: 768px) {
+            .form-inline {
+                grid-template-columns: 1fr;
+            }
+            .stats {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔐 XorthonL Admin Dashboard</h1>
+        <a href="/xorn/admin/logout" class="logout">Logout</a>
+        <div style="clear: both;"></div>
+    </div>
+
+    {% if request.query_params.get('success') %}
+    <div class="alert alert-success">{{ request.query_params.get('success') }}</div>
+    {% endif %}
+    
+    {% if request.query_params.get('error') %}
+    <div class="alert alert-error">{{ request.query_params.get('error') }}</div>
+    {% endif %}
+
+    <div class="stats">
+        <div class="stat-card">
+            <h3>Total API Keys</h3>
+            <div class="number" id="total-keys">{{ api_keys|length }}</div>
+        </div>
+        <div class="stat-card">
+            <h3>Active Keys</h3>
+            <div class="number" id="active-keys">{{ api_keys|selectattr('is_active')|list|length }}</div>
+        </div>
+        <div class="stat-card">
+            <h3>Total Requests</h3>
+            <div class="number" id="total-requests">{{ usage_stats.total_requests }}</div>
+        </div>
+        <div class="stat-card">
+            <h3>Success Rate</h3>
+            <div class="number" id="success-rate">{{ "%.1f"|format(usage_stats.success_rate) }}%</div>
+        </div>
+        <div class="stat-card">
+            <h3>Unique Users</h3>
+            <div class="number" id="unique-users">{{ usage_stats.unique_users or 0 }}</div>
+        </div>
+        <div class="stat-card">
+            <h3>Avg Response Time</h3>
+            <div class="number" id="avg-response-time">{{ "%.0f"|format(usage_stats.avg_response_time or 0) }}ms</div>
+        </div>
+    </div>
+
+    <div class="stats">
+        <div class="stat-card">
+            <h3>Active Users (1h)</h3>
+            <div class="number" id="active-users-hour">{{ user_activity.active_users_hour or 0 }}</div>
+        </div>
+        <div class="stat-card">
+            <h3>Active Users (24h)</h3>
+            <div class="number" id="active-users-day">{{ user_activity.active_users_day or 0 }}</div>
+        </div>
+        <div class="stat-card">
+            <h3>Hourly Requests</h3>
+            <div class="number" id="hourly-requests">{{ real_time_stats.hourly_requests or 0 }}</div>
+        </div>
+        <div class="stat-card">
+            <h3>Hourly Success Rate</h3>
+            <div class="number" id="hourly-success-rate">{{ "%.1f"|format(real_time_stats.hourly_success_rate or 0) }}%</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Create New API Key</h2>
+        <div id="createApiKeyForm">
+            <div class="form-inline">
+                <div class="form-group">
+                    <label for="name">Name:</label>
+                    <input type="text" id="name" name="name" placeholder="e.g., Client ABC" onkeypress="if(event.key==='Enter') createApiKey()">
+                </div>
+                <div class="form-group">
+                    <label for="description">Description:</label>
+                    <input type="text" id="description" name="description" placeholder="Optional description" onkeypress="if(event.key==='Enter') createApiKey()">
+                </div>
+                <div class="form-group">
+                    <label for="rate_limit">Rate Limit (per hour):</label>
+                    <input type="number" id="rate_limit" name="rate_limit" value="1000" min="1" onkeypress="if(event.key==='Enter') createApiKey()">
+                </div>
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button type="button" onclick="createApiKey()" class="btn btn-primary">Create API Key</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>API Keys Management</h2>
+        <div style="overflow-x: auto;">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>API Key</th>
+                        <th>Status</th>
+                        <th>Usage Count</th>
+                        <th>Rate Limit</th>
+                        <th>Created</th>
+                        <th>Last Used</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for key in api_keys %}
+                    <tr>
+                        <td>{{ key.key_id }}</td>
+                        <td>{{ key.name }}</td>
+                        <td><span class="api-key">{{ key.api_key[:20] }}...</span></td>
+                        <td>
+                            {% if key.is_active %}
+                            <span class="status-active">● Active</span>
+                            {% else %}
+                            <span class="status-inactive">● Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ key.usage_count }}</td>
+                        <td>{{ key.rate_limit }}/hour</td>
+                        <td>{{ key.created_at.strftime('%Y-%m-%d %H:%M') if key.created_at else 'N/A' }}</td>
+                        <td>{{ key.last_used.strftime('%Y-%m-%d %H:%M') if key.last_used else 'Never' }}</td>
+                        <td>
+                            {% if key.is_active %}
+                            <button onclick="deactivateKey('{{ key.key_id }}')" class="btn btn-danger" style="margin-right: 5px;">Deactivate</button>
+                            {% endif %}
+                            <button onclick="showStats('{{ key.key_id }}')" class="btn btn-primary">Stats</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Real-time dashboard updates
+        let updateInterval;
+        
+        function updateDashboardStats() {
+            fetch('/xorn/admin/stats/dashboard')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update API key stats
+                        document.getElementById('total-keys').textContent = data.api_keys.total;
+                        document.getElementById('active-keys').textContent = data.api_keys.active;
+                        
+                        // Update usage stats
+                        document.getElementById('total-requests').textContent = data.usage.total_requests;
+                        document.getElementById('success-rate').textContent = data.usage.success_rate.toFixed(1) + '%';
+                        document.getElementById('unique-users').textContent = data.usage.unique_users;
+                        document.getElementById('avg-response-time').textContent = Math.round(data.usage.avg_response_time) + 'ms';
+                        
+                        // Update real-time stats
+                        document.getElementById('active-users-hour').textContent = data.user_activity.active_users_hour;
+                        document.getElementById('active-users-day').textContent = data.user_activity.active_users_day;
+                        document.getElementById('hourly-requests').textContent = data.real_time.hourly_requests;
+                        document.getElementById('hourly-success-rate').textContent = data.real_time.hourly_success_rate.toFixed(1) + '%';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating dashboard stats:', error);
+                });
+        }
+        
+        function startAutoUpdate() {
+            // Update immediately
+            updateDashboardStats();
+            
+            // Then update every 30 seconds
+            updateInterval = setInterval(updateDashboardStats, 30000);
+        }
+        
+        function stopAutoUpdate() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+        }
+        
+        // Start auto-update when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            startAutoUpdate();
+        });
+        
+        // Stop auto-update when page is hidden (to save resources)
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                stopAutoUpdate();
+            } else {
+                startAutoUpdate();
+            }
+        });
+
+        function deactivateKey(keyId) {
+            if (confirm('Are you sure you want to deactivate this API key?')) {
+                fetch(`/xorn/admin/api-keys/${keyId}/deactivate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('Error: ' + error);
+                });
+            }
+        }
+
+        function showStats(keyId) {
+            fetch(`/xorn/admin/api-keys/${keyId}/stats`)
+                .then(response => response.json())
+                .then(data => {
+                    let statsText = `API Key Statistics:\n\n`;
+                    statsText += `Total Requests: ${data.total_requests}\n`;
+                    statsText += `Successful Requests: ${data.successful_requests}\n`;
+                    statsText += `Success Rate: ${data.success_rate.toFixed(1)}%\n\n`;
+                    statsText += `CAPTCHA Types:\n`;
+                    for (const [type, count] of Object.entries(data.captcha_type_stats)) {
+                        statsText += `  ${type}: ${count}\n`;
+                    }
+                    alert(statsText);
+                })
+                .catch(error => {
+                    alert('Error loading stats: ' + error);
+                });
+        }
+    </script>
+</body>
+</html>
+    <!-- API Key Modal -->
+    <div id="apiKeyModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); backdrop-filter: blur(5px);">
+        <div class="modal-content" style="background: linear-gradient(145deg, #2d1b69 0%, #1a1a2e 100%); margin: 10% auto; padding: 30px; border: 2px solid rgba(138, 43, 226, 0.3); border-radius: 15px; width: 80%; max-width: 600px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); color: #e6e6fa;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid rgba(138, 43, 226, 0.3);">
+                <h2 style="margin: 0; color: #8a2be2; text-shadow: 0 0 10px rgba(138, 43, 226, 0.5);">🎉 Your Xorn API Key</h2>
+                <span class="close" onclick="closeModal()" style="color: #b19cd9; font-size: 28px; font-weight: bold; cursor: pointer; transition: color 0.3s ease;">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p><strong>API Key Created Successfully!</strong></p>
+                <p>Please save this API key securely. You won't be able to see it again.</p>
+                
+                <div class="api-key-display" id="apiKeyDisplay" style="background: rgba(0, 0, 0, 0.4); padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid rgba(138, 43, 226, 0.3); font-family: 'Courier New', monospace; word-break: break-all; color: #8a2be2; font-size: 14px;"></div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button onclick="copyApiKey()" class="btn" style="margin: 5px; padding: 10px 20px; font-size: 14px; background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%); color: white; border: none; border-radius: 8px; cursor: pointer;">📋 Copy API Key</button>
+                    <button onclick="downloadApiKey()" class="btn" style="margin: 5px; padding: 10px 20px; font-size: 14px; background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); color: white; border: none; border-radius: 8px; cursor: pointer;">💾 Download as JSON</button>
+                </div>
+                
+                <div style="margin-top: 20px; padding: 15px; background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 8px;">
+                    <strong>⚠️ Important:</strong> Store this API key safely. It will not be shown again for security reasons.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentApiKeyData = null;
+
+        // Create API Key function
+        function createApiKey() {
+            console.log('createApiKey function called');
+            
+            const name = document.getElementById('name').value;
+            const description = document.getElementById('description').value;
+            const rate_limit = document.getElementById('rate_limit').value;
+            
+            if (!name) {
+                alert('Please enter a name for the API key');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('description', description);
+            formData.append('rate_limit', rate_limit);
+            
+            console.log('Sending request to create API key...');
+            
+            fetch('/xorn/admin/api-keys/create', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                console.log('Response received:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                if (data.success) {
+                    currentApiKeyData = data;
+                    showApiKeyModal(data);
+                    // Clear the form
+                    document.getElementById('name').value = '';
+                    document.getElementById('description').value = '';
+                    document.getElementById('rate_limit').value = '1000';
+                } else {
+                    alert('Error creating API key: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error creating API key: ' + error.message);
+            });
+        }
+
+        function showApiKeyModal(data) {
+            console.log('Showing modal with data:', data);
+            document.getElementById('apiKeyDisplay').textContent = data.api_key;
+            document.getElementById('apiKeyModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('apiKeyModal').style.display = 'none';
+            // Refresh the page to show the new API key in the table
+            location.reload();
+        }
+
+        function copyApiKey() {
+            const apiKey = document.getElementById('apiKeyDisplay').textContent;
+            navigator.clipboard.writeText(apiKey).then(function() {
+                alert('API key copied to clipboard!');
+            }, function(err) {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = apiKey;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert('API key copied to clipboard!');
+            });
+        }
+
+        function downloadApiKey() {
+            if (!currentApiKeyData) return;
+            
+            const jsonData = {
+                api_key: currentApiKeyData.api_key,
+                key_id: currentApiKeyData.key_id,
+                name: currentApiKeyData.name,
+                description: currentApiKeyData.description,
+                rate_limit: currentApiKeyData.rate_limit,
+                created_at: currentApiKeyData.created_at,
+                service: "XorthonL API",
+                usage_instructions: "Include this API key in your requests using the Authorization header: 'Bearer " + currentApiKeyData.api_key + "' or X-API-Key header."
+            };
+            
+            const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `xorn-api-key-${currentApiKeyData.name.replace(/[^a-zA-Z0-9]/g, '-')}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Close modal when clicking outside of it
+        window.onclick = function(event) {
+            const modal = document.getElementById('apiKeyModal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+    </script>

@@ -1,0 +1,422 @@
+{% extends "base.html" %}
+
+{% block title %}Prometheus Metrics Dashboard{% endblock %}
+
+{% block content %}
+<style>
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border-radius: 15px;
+        border: 1px solid rgba(139, 69, 255, 0.2);
+        box-shadow: 0 5px 15px rgba(139, 69, 255, 0.1);
+    }
+
+    .dashboard-title {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .dashboard-title h1 {
+        color: var(--purple-primary);
+        font-size: 2rem;
+        margin: 0;
+        text-shadow: 0 0 20px rgba(139, 69, 255, 0.5);
+    }
+
+    .prometheus-logo {
+        width: 50px;
+        height: 50px;
+        background: linear-gradient(135deg, var(--purple-primary) 0%, var(--purple-secondary) 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 5px 15px rgba(139, 69, 255, 0.3);
+    }
+
+    .prometheus-logo svg {
+        width: 25px;
+        height: 25px;
+        color: white;
+    }
+
+    .refresh-controls {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+
+    .refresh-button {
+        padding: 0.5rem 1rem;
+        background: linear-gradient(135deg, var(--purple-primary) 0%, var(--purple-secondary) 100%);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .refresh-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(139, 69, 255, 0.4);
+    }
+
+    .auto-refresh {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .auto-refresh input[type="checkbox"] {
+        accent-color: var(--purple-primary);
+    }
+
+    .metrics-container {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(139, 69, 255, 0.2);
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .metrics-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(139, 69, 255, 0.2);
+    }
+
+    .metrics-header h2 {
+        color: var(--purple-primary);
+        margin: 0;
+        font-size: 1.5rem;
+    }
+
+    .last-updated {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .metrics-content {
+        font-family: 'Courier New', monospace;
+        background: rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(139, 69, 255, 0.3);
+        border-radius: 10px;
+        padding: 1.5rem;
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        overflow-x: auto;
+        max-height: 600px;
+        overflow-y: auto;
+    }
+
+    .metrics-content::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .metrics-content::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 4px;
+    }
+
+    .metrics-content::-webkit-scrollbar-thumb {
+        background: var(--purple-primary);
+        border-radius: 4px;
+    }
+
+    .metrics-content::-webkit-scrollbar-thumb:hover {
+        background: var(--purple-secondary);
+    }
+
+    .metric-line {
+        margin-bottom: 0.5rem;
+    }
+
+    .metric-comment {
+        color: #6c757d;
+        font-style: italic;
+    }
+
+    .metric-name {
+        color: var(--purple-primary);
+        font-weight: bold;
+    }
+
+    .metric-value {
+        color: #28a745;
+        font-weight: bold;
+    }
+
+    .metric-type {
+        color: #ffc107;
+    }
+
+    .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(139, 69, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: var(--purple-primary);
+        animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .error-message {
+        background: rgba(255, 59, 48, 0.1);
+        border: 1px solid rgba(255, 59, 48, 0.3);
+        color: #ff3b30;
+        padding: 1rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+        text-align: center;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: linear-gradient(135deg, rgba(139, 69, 255, 0.1) 0%, rgba(139, 69, 255, 0.05) 100%);
+        border: 1px solid rgba(139, 69, 255, 0.2);
+        border-radius: 10px;
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: var(--purple-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .logout-button {
+        padding: 0.5rem 1rem;
+        background: rgba(255, 59, 48, 0.8);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .logout-button:hover {
+        background: rgba(255, 59, 48, 1);
+        transform: translateY(-2px);
+    }
+</style>
+
+<div class="dashboard-header">
+    <div class="dashboard-title">
+        <div class="prometheus-logo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 3v18h18"></path>
+                <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path>
+            </svg>
+        </div>
+        <h1>Prometheus Metrics Dashboard</h1>
+    </div>
+    <div class="refresh-controls">
+        <div class="auto-refresh">
+            <input type="checkbox" id="autoRefresh" checked>
+            <label for="autoRefresh">Auto-refresh (30s)</label>
+        </div>
+        <button class="refresh-button" onclick="refreshMetrics()">
+            <span id="refreshIcon">🔄</span> Refresh
+        </button>
+        <a href="/metrics/prometheus/logout" class="logout-button">Logout</a>
+    </div>
+</div>
+
+<div class="stats-grid" id="statsGrid">
+    <!-- Stats will be populated by JavaScript -->
+</div>
+
+<div class="metrics-container">
+    <div class="metrics-header">
+        <h2>Live Metrics Data</h2>
+        <div class="last-updated">
+            Last updated: <span id="lastUpdated">Loading...</span>
+        </div>
+    </div>
+    <div class="metrics-content" id="metricsContent">
+        <div style="text-align: center; padding: 2rem;">
+            <div class="loading-spinner"></div>
+            <p style="margin-top: 1rem; color: var(--text-secondary);">Loading metrics data...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+let autoRefreshInterval;
+
+function formatMetricsData(data) {
+    return data
+        .split('\n')
+        .map(line => {
+            if (line.startsWith('#')) {
+                return `<span class="metric-comment">${line}</span>`;
+            } else if (line.includes(' ')) {
+                const parts = line.split(' ');
+                const metricName = parts[0];
+                const metricValue = parts.slice(1).join(' ');
+                return `<span class="metric-name">${metricName}</span> <span class="metric-value">${metricValue}</span>`;
+            }
+            return line;
+        })
+        .join('\n');
+}
+
+function parseMetricsForStats(data) {
+    const stats = {};
+    const lines = data.split('\n');
+    
+    for (const line of lines) {
+        if (!line.startsWith('#') && line.includes(' ')) {
+            const parts = line.split(' ');
+            const metricName = parts[0];
+            const metricValue = parseFloat(parts[1]);
+            
+            if (!isNaN(metricValue)) {
+                if (metricName.includes('tasks_active')) {
+                    stats.activeTasks = metricValue;
+                } else if (metricName.includes('tasks_completed')) {
+                    stats.completedTasks = metricValue;
+                } else if (metricName.includes('tasks_failed')) {
+                    stats.failedTasks = metricValue;
+                } else if (metricName.includes('solvers_available')) {
+                    stats.availableSolvers = metricValue;
+                } else if (metricName.includes('solvers_total')) {
+                    stats.totalSolvers = metricValue;
+                } else if (metricName.includes('memory_usage_bytes')) {
+                    stats.memoryUsageMB = Math.round(metricValue / 1024 / 1024);
+                } else if (metricName.includes('cpu_usage_percent')) {
+                    stats.cpuUsage = metricValue.toFixed(1);
+                }
+            }
+        }
+    }
+    
+    return stats;
+}
+
+function updateStatsGrid(stats) {
+    const statsGrid = document.getElementById('statsGrid');
+    statsGrid.innerHTML = `
+        <div class="stat-card">
+            <div class="stat-value">${stats.activeTasks || 0}</div>
+            <div class="stat-label">Active Tasks</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">${stats.completedTasks || 0}</div>
+            <div class="stat-label">Completed Tasks</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">${stats.failedTasks || 0}</div>
+            <div class="stat-label">Failed Tasks</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">${stats.availableSolvers || 0}</div>
+            <div class="stat-label">Available Solvers</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">${stats.totalSolvers || 0}</div>
+            <div class="stat-label">Total Solvers</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">${stats.memoryUsageMB || 0}</div>
+            <div class="stat-label">Memory (MB)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">${stats.cpuUsage || 0}%</div>
+            <div class="stat-label">CPU Usage</div>
+        </div>
+    `;
+}
+
+async function refreshMetrics() {
+    const refreshIcon = document.getElementById('refreshIcon');
+    const metricsContent = document.getElementById('metricsContent');
+    const lastUpdated = document.getElementById('lastUpdated');
+    
+    refreshIcon.innerHTML = '<div class="loading-spinner"></div>';
+    
+    try {
+        const response = await fetch('/metrics/prometheus/data');
+        if (response.ok) {
+            const data = await response.text();
+            metricsContent.innerHTML = formatMetricsData(data);
+            
+            // Update stats
+            const stats = parseMetricsForStats(data);
+            updateStatsGrid(stats);
+            
+            lastUpdated.textContent = new Date().toLocaleString();
+        } else {
+            metricsContent.innerHTML = `<div class="error-message">Failed to load metrics: ${response.status} ${response.statusText}</div>`;
+        }
+    } catch (error) {
+        metricsContent.innerHTML = `<div class="error-message">Error loading metrics: ${error.message}</div>`;
+    }
+    
+    refreshIcon.innerHTML = '🔄';
+}
+
+function setupAutoRefresh() {
+    const autoRefreshCheckbox = document.getElementById('autoRefresh');
+    
+    function toggleAutoRefresh() {
+        if (autoRefreshCheckbox.checked) {
+            autoRefreshInterval = setInterval(refreshMetrics, 30000);
+        } else {
+            clearInterval(autoRefreshInterval);
+        }
+    }
+    
+    autoRefreshCheckbox.addEventListener('change', toggleAutoRefresh);
+    toggleAutoRefresh(); // Initialize
+}
+
+// Initialize dashboard
+document.addEventListener('DOMContentLoaded', function() {
+    refreshMetrics();
+    setupAutoRefresh();
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+    }
+});
+</script>
+{% endblock %}

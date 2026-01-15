@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Metrics Dashboard - XorthonL CAPTCHA Solver API{% endblock %}
+
+{% block content %}
+<div class="grid">
+    <div class="card">
+        <h2 class="card-title">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 3v18h18"></path>
+                <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path>
+            </svg>
+            Task Metrics
+        </h2>
+        <div class="card-content">
+            <div class="metric">
+                <span class="metric-label">Active Tasks</span>
+                <span class="metric-value" data-metric="active-tasks">{{ task_metrics.active or 0 }}</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Completed Tasks</span>
+                <span class="metric-value" data-metric="completed-tasks">{{ task_metrics.completed or 0 }}</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Failed Tasks</span>
+                <span class="metric-value" data-metric="failed-tasks">{{ task_metrics.failed or 0 }}</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Queue Size</span>
+                <span class="metric-value" data-metric="queue-size">{{ task_metrics.queue_size or 0 }}</span>
+            </div>
+            
+            {% if task_metrics.completed and task_metrics.failed %}
+            <div style="margin-top: 1rem;">
+                <div class="metric">
+                    <span class="metric-label">Success Rate</span>
+                    <span class="metric-value">{{ "%.1f"|format((task_metrics.completed / (task_metrics.completed + task_metrics.failed)) * 100) }}%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{ (task_metrics.completed / (task_metrics.completed + task_metrics.failed)) * 100 }}%"></div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 class="card-title">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 12l2 2 4-4"></path>
+                <path d="M21 12c-1 0-3-1-3-3s2-3 3-3 3 1 3 3-2 3-3 3"></path>
+                <path d="M3 12c1 0 3-1 3-3s-2-3-3-3-3 1-3 3 2 3 3 3"></path>
+            </svg>
+            Solver Metrics
+        </h2>
+        <div class="card-content">
+            <div class="metric">
+                <span class="metric-label">Available Solvers</span>
+                <span class="metric-value" data-metric="available-solvers">{{ solver_metrics.available or 0 }}</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Total Solvers</span>
+                <span class="metric-value" data-metric="total-solvers">{{ solver_metrics.total or 0 }}</span>
+            </div>
+            
+            {% if solver_metrics.available and solver_metrics.total %}
+            <div style="margin-top: 1rem;">
+                <div class="metric">
+                    <span class="metric-label">Availability Rate</span>
+                    <span class="metric-value">{{ "%.1f"|format((solver_metrics.available / solver_metrics.total) * 100) }}%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{ (solver_metrics.available / solver_metrics.total) * 100 }}%"></div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if solver_metrics.solvers %}
+            <div style="margin-top: 1.5rem;">
+                <h4 style="color: var(--purple-primary); margin-bottom: 0.75rem;">Active Solvers:</h4>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                    {% for solver in solver_metrics.solvers %}
+                    <span class="status-indicator status-healthy" style="font-size: 0.8rem; padding: 0.25rem 0.75rem;">
+                        {{ solver }}
+                    </span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 class="card-title">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            System Metrics
+        </h2>
+        <div class="card-content">
+            <div class="metric">
+                <span class="metric-label">Memory Usage</span>
+                <span class="metric-value" data-metric="memory-usage">{{ "%.1f"|format(system_metrics.memory_usage_mb or 0) }} MB</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">CPU Usage</span>
+                <span class="metric-value" data-metric="cpu-usage">{{ "%.1f"|format(system_metrics.cpu_percent or 0) }}%</span>
+            </div>
+            <div class="progress-bar" style="margin-top: 0.5rem;">
+                <div class="progress-fill" style="width: {{ system_metrics.cpu_percent or 0 }}%"></div>
+            </div>
+            
+            <div class="metric" style="margin-top: 1rem;">
+                <span class="metric-label">Disk Usage</span>
+                <span class="metric-value" data-metric="disk-usage">
+                    {{ "%.1f"|format((system_metrics.disk_used_gb or 0)) }} GB / 
+                    {{ "%.1f"|format((system_metrics.disk_total_gb or 0)) }} GB
+                </span>
+            </div>
+            {% if system_metrics.disk_total_gb and system_metrics.disk_total_gb > 0 %}
+            <div class="progress-bar" style="margin-top: 0.5rem;">
+                <div class="progress-fill" style="width: {{ (system_metrics.disk_used_gb / system_metrics.disk_total_gb) * 100 }}%"></div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if cache_metrics %}
+    <div class="card">
+        <h2 class="card-title">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+            </svg>
+            Cache Metrics
+        </h2>
+        <div class="card-content">
+            <div class="metric">
+                <span class="metric-label">Cache Hits</span>
+                <span class="metric-value" data-metric="cache-hits">{{ cache_metrics.hits or 0 }}</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Cache Misses</span>
+                <span class="metric-value" data-metric="cache-misses">{{ cache_metrics.misses or 0 }}</span>
+            </div>
+            
+            {% if cache_metrics.hits and cache_metrics.misses %}
+            <div style="margin-top: 1rem;">
+                <div class="metric">
+                    <span class="metric-label">Hit Rate</span>
+                    <span class="metric-value">{{ "%.1f"|format((cache_metrics.hits / (cache_metrics.hits + cache_metrics.misses)) * 100) }}%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{ (cache_metrics.hits / (cache_metrics.hits + cache_metrics.misses)) * 100 }}%"></div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2 class="card-title">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22,12 18,12 15,21 9,3 6,12 2,12"></polyline>
+        </svg>
+        Prometheus Metrics Export
+    </h2>
+    <div class="card-content">
+        <p style="margin-bottom: 1rem; color: var(--text-secondary);">
+            Raw Prometheus-compatible metrics for monitoring and alerting systems.
+        </p>
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+            <a href="/metrics/prometheus" class="btn btn-primary">View Raw Metrics</a>
+            <button onclick="copyMetricsUrl()" class="btn btn-secondary">Copy Metrics URL</button>
+        </div>
+        <div style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted);">
+            <p>Metrics endpoint for Prometheus scraping:</p>
+            <code id="metrics-url" style="background: var(--accent-bg); padding: 0.5rem; border-radius: 4px; display: block; margin-top: 0.5rem;">
+                {{ request.url.scheme }}://{{ request.url.netloc }}/metrics/prometheus
+            </code>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyMetricsUrl() {
+    const url = document.getElementById('metrics-url').textContent.trim();
+    navigator.clipboard.writeText(url).then(() => {
+        // Show a temporary success message
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.style.background = 'var(--success-color)';
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.style.background = '';
+        }, 2000);
+    });
+}
+
+// Auto-refresh metrics every 30 seconds
+setInterval(() => {
+    location.reload();
+}, 30000);
+</script>
+{% endblock %}

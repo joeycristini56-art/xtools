@@ -1,0 +1,130 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Flutter/Dart
+.dart_tool/
+.packages
+.pub/
+/build/
+pubspec.lock
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+*.egg-info/
+dist/
+build/
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+go.sum
+vendor/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# API keys and secrets
+*.key
+*.pem
+.api_key
+.config.json
+
+# Data files
+data/
+*.db
+*.txt
+*.csv
+*.json
+!package.json
+!pubspec.json
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# IDE
+.vscode/
+.vscode/settings.json
+.vscode/tasks.json
+.vscode/launch.json
+*.code-workspace
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Interpreters (can be rebuilt)
+interpreters/go/*
+!interpreters/go/.gitkeep
+interpreters/python/*
+!interpreters/python/.gitkeep
+
+# Wordlists (user data)
+wordlists/
+
+# Build artifacts
+*.apk
+*.ipa
+*.app
+*.deb
+*.rpm
+
+# Coverage
+coverage/
+*.lcov
+
+# Test
+test/.test_coverage.dart
+.test_coverage.dart
+
+# Lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+Cargo.lock
+
+# Runtime files
+*.pid
+*.sock
+*.lock

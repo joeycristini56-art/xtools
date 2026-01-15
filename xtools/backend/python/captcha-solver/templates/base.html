@@ -1,0 +1,39 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}XorthonL CAPTCHA Solver API{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔐</text></svg>">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="logo">XorthonL</h1>
+            <p class="subtitle">Advanced CAPTCHA Solver API</p>
+        </header>
+
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+
+        <footer class="footer">
+            <p>&copy; 2024 XorthonL CAPTCHA Solver API. All rights reserved.</p>
+            <div class="api-links">
+                <a href="/" class="btn btn-secondary">Home</a>
+                <a href="/health" class="btn btn-secondary">Health Check</a>
+                <a href="/docs" class="btn btn-secondary">API Documentation</a>
+                <a href="/metrics" class="btn btn-secondary">Metrics</a>
+            </div>
+        </footer>
+    </div>
+
+    <button class="refresh-btn" title="Refresh Data">↻</button>
+
+    <script src="/static/js/app.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
