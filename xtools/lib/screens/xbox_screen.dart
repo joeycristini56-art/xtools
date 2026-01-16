@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'dart:io';
+import '../services/bot_service.dart';
+import '../services/config_service.dart';
 
 class XboxScreen extends StatefulWidget {
   const XboxScreen({super.key});
@@ -14,8 +15,48 @@ class _XboxScreenState extends State<XboxScreen> {
   bool _isChecking = false;
   String? _status;
   String? _error;
-  String? _result;
-  String? _apiKey;
+  Map<String, dynamic>? _result;
+  
+  final _apiKeyController = TextEditingController();
+  final _maxWorkersController = TextEditingController(text: '1000');
+  final _targetCPMController = TextEditingController(text: '20000');
+  final _batchSizeController = TextEditingController(text: '1000');
+  final _poolSizeController = TextEditingController(text: '1000');
+  
+  bool _showAdvanced = false;
+  bool _resetProgress = false;
+
+  final BotService _botService = BotService();
+  final ConfigService _configService = ConfigService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedConfig();
+  }
+
+  Future<void> _loadSavedConfig() async {
+    final apiKey = await _configService.getXboxAPIKey();
+    if (apiKey != null) {
+      _apiKeyController.text = apiKey;
+    }
+    
+    final config = await _configService.getXboxConfig();
+    _maxWorkersController.text = config['maxWorkers'].toString();
+    _targetCPMController.text = config['targetCPM'].toString();
+    _batchSizeController.text = config['batchSize'].toString();
+    _poolSizeController.text = config['poolSize'].toString();
+  }
+
+  @override
+  void dispose() {
+    _apiKeyController.dispose();
+    _maxWorkersController.dispose();
+    _targetCPMController.dispose();
+    _batchSizeController.dispose();
+    _poolSizeController.dispose();
+    super.dispose();
+  }
 
   Future<void> _pickFile() async {
     try {
@@ -43,7 +84,7 @@ class _XboxScreenState extends State<XboxScreen> {
       return;
     }
 
-    if (_apiKey == null || _apiKey!.isEmpty) {
+    if (_apiKeyController.text.isEmpty) {
       setState(() {
         _error = 'Please enter an API key';
       });
@@ -58,32 +99,36 @@ class _XboxScreenState extends State<XboxScreen> {
     });
 
     try {
-      // Create a temporary API key file
-      final apiKeyFile = File('.api_key');
-      await apiKeyFile.writeAsString(_apiKey!);
+      // Save config for next time
+      await _configService.saveXboxConfig(
+        maxWorkers: int.tryParse(_maxWorkersController.text),
+        targetCPM: int.tryParse(_targetCPMController.text),
+        batchSize: int.tryParse(_batchSizeController.text),
+        poolSize: int.tryParse(_poolSizeController.text),
+      );
 
-      // Create config file
-      final configFile = File('.config.json');
-      await configFile.writeAsString('{"InputFile":"$_selectedFilePath","OutputFile":"valid.txt","MaxWorkers":1000,"TargetCPM":20000,"BatchSize":1000,"PoolSize":1000,"ResetProgress":false}');
-
-      final scriptPath = 'backend/go/runtime/main.go';
+      final result = await _botService.checkXboxAccounts(
+        apiKey: _apiKeyController.text,
+        comboFile: _selectedFilePath!,
+        maxWorkers: int.tryParse(_maxWorkersController.text),
+        targetCPM: int.tryParse(_targetCPMController.text),
+        batchSize: int.tryParse(_batchSizeController.text),
+        poolSize: int.tryParse(_poolSizeController.text),
+        resetProgress: _resetProgress,
+      );
       
-      // Run Go checker
-      final result = await Process.run('go', ['run', scriptPath, '--nomenu']);
-      
-      if (result.exitCode == 0) {
-        setState(() {
-          _isChecking = false;
+      setState(() {
+        _isChecking = false;
+        if (result['success'] == true) {
           _status = 'Xbox check completed!';
-          _result = result.stdout as String;
-        });
-      } else {
-        setState(() {
-          _isChecking = false;
-          _error = result.stderr?.toString() ?? 'Checker failed';
+          _result = result;
+          _error = null;
+        } else {
+          _error = result['error'] ?? 'Checker failed';
           _status = 'Check failed';
-        });
-      }
+          _result = null;
+        }
+      });
     } catch (e) {
       setState(() {
         _isChecking = false;
@@ -93,19 +138,28 @@ class _XboxScreenState extends State<XboxScreen> {
     }
   }
 
+  String _formatResult(Map<String, dynamic> result) {
+    final buffer = StringBuffer();
+    result.forEach((key, value) {
+      if (key != 'success' && key != 'traceback') {
+        buffer.writeln('$key: $value');
+      }
+    });
+    return buffer.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Xbox Checker'),
         actions: [
-          if (_selectedFilePath != null || _apiKey != null)
+          if (_selectedFilePath != null || _apiKeyController.text.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.clear),
               onPressed: () {
                 setState(() {
                   _selectedFilePath = null;
-                  _apiKey = null;
                   _status = null;
                   _error = null;
                   _result = null;
@@ -138,6 +192,7 @@ class _XboxScreenState extends State<XboxScreen> {
                     ),
                     const SizedBox(height: 16),
                     TextField(
+                      controller: _apiKeyController,
                       decoration: const InputDecoration(
                         labelText: 'API Key',
                         hintText: 'Enter your API key',
@@ -145,11 +200,6 @@ class _XboxScreenState extends State<XboxScreen> {
                         border: OutlineInputBorder(),
                       ),
                       obscureText: true,
-                      onChanged: (value) {
-                        setState(() {
-                          _apiKey = value;
-                        });
-                      },
                       enabled: !_isChecking,
                     ),
                     const SizedBox(height: 12),
@@ -157,17 +207,17 @@ class _XboxScreenState extends State<XboxScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.1),
+                          color: Colors.green.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.insert_drive_file, color: Colors.red),
+                            const Icon(Icons.insert_drive_file, color: Colors.green),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 _selectedFilePath!.split('/').last,
-                                style: const TextStyle(color: Colors.red),
+                                style: const TextStyle(color: Colors.green),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -179,6 +229,93 @@ class _XboxScreenState extends State<XboxScreen> {
                         'No combo file selected',
                         style: TextStyle(color: Colors.grey),
                       ),
+                    const SizedBox(height: 16),
+                    
+                    // Advanced settings toggle
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Advanced Settings'),
+                      trailing: Switch(
+                        value: _showAdvanced,
+                        onChanged: _isChecking ? null : (value) {
+                          setState(() {
+                            _showAdvanced = value;
+                          });
+                        },
+                      ),
+                    ),
+                    
+                    if (_showAdvanced) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _maxWorkersController,
+                              decoration: const InputDecoration(
+                                labelText: 'Max Workers',
+                                border: OutlineInputBorder(),
+                              ),
+                              keyboardType: TextInputType.number,
+                              enabled: !_isChecking,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: _targetCPMController,
+                              decoration: const InputDecoration(
+                                labelText: 'Target CPM',
+                                border: OutlineInputBorder(),
+                              ),
+                              keyboardType: TextInputType.number,
+                              enabled: !_isChecking,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _batchSizeController,
+                              decoration: const InputDecoration(
+                                labelText: 'Batch Size',
+                                border: OutlineInputBorder(),
+                              ),
+                              keyboardType: TextInputType.number,
+                              enabled: !_isChecking,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: _poolSizeController,
+                              decoration: const InputDecoration(
+                                labelText: 'Pool Size',
+                                border: OutlineInputBorder(),
+                              ),
+                              keyboardType: TextInputType.number,
+                              enabled: !_isChecking,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Reset Progress'),
+                        subtitle: const Text('Start from beginning'),
+                        value: _resetProgress,
+                        onChanged: _isChecking ? null : (value) {
+                          setState(() {
+                            _resetProgress = value ?? false;
+                          });
+                        },
+                      ),
+                    ],
+                    
                     const SizedBox(height: 16),
                     Row(
                       children: [
@@ -192,7 +329,7 @@ class _XboxScreenState extends State<XboxScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: _isChecking ? null : (_selectedFilePath != null && _apiKey != null && _apiKey!.isNotEmpty ? _startChecker : null),
+                            onPressed: _isChecking ? null : (_selectedFilePath != null && _apiKeyController.text.isNotEmpty ? _startChecker : null),
                             icon: _isChecking
                                 ? const SizedBox(
                                     width: 16,
@@ -205,7 +342,7 @@ class _XboxScreenState extends State<XboxScreen> {
                                 : const Icon(Icons.play_arrow),
                             label: Text(_isChecking ? 'Checking...' : 'Start Check'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: _isChecking ? Colors.grey : Colors.red,
+                              backgroundColor: _isChecking ? Colors.grey : Colors.green,
                             ),
                           ),
                         ),
@@ -233,7 +370,7 @@ class _XboxScreenState extends State<XboxScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          _status ?? _error!,
+                          _error ?? _status!,
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w500,
                           ),
@@ -265,7 +402,7 @@ class _XboxScreenState extends State<XboxScreen> {
                       padding: const EdgeInsets.all(12),
                       color: Theme.of(context).scaffoldBackgroundColor,
                       child: SelectableText(
-                        _result!,
+                        _formatResult(_result!),
                         style: const TextStyle(
                           fontFamily: 'monospace',
                           fontSize: 12,

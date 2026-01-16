@@ -773,3 +773,65 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# XTools FFI Integration
+def scrape_url_ffi(url: str) -> str:
+    """
+    Scrape a URL for combo data via FFI.
+    
+    Args:
+        url: URL to scrape (can be a file hosting link or a page with links)
+    
+    Returns:
+        JSON string with results
+    """
+    import json
+    
+    try:
+        if not url:
+            return json.dumps({"success": False, "error": "URL is required"})
+        
+        # Determine the type of URL and handle accordingly
+        parsed = urlparse(url)
+        domain = parsed.netloc.lower()
+        
+        combos_before = scraped_combos
+        
+        if 'gofile.io' in domain:
+            FileHandler.gofile(url, "ffi")
+        elif 'mediafire.com' in domain:
+            FileHandler.mediafire(url, "ffi")
+        elif 'upload.ee' in domain:
+            FileHandler.uploadee(url, "ffi")
+        elif 'anonfiles' in domain or 'anonfile' in domain:
+            FileHandler.anonfiles(url, "ffi")
+        elif 'nohide' in domain:
+            # Scrape nohide page
+            NoHideScraper.scrape_nohide(max_pages=1)
+        else:
+            # Try to scrape as a generic page
+            session = requests.Session()
+            session.headers.update(agent)
+            response = session.get(url, timeout=30, verify=False)
+            
+            if response.status_code == 200:
+                # Try to extract combos from page content
+                FileHandler.save_combos_to_log(response.text, domain)
+            else:
+                return json.dumps({
+                    "success": False,
+                    "error": f"HTTP {response.status_code}"
+                })
+        
+        combos_found = scraped_combos - combos_before
+        
+        return json.dumps({
+            "success": True,
+            "url": url,
+            "combos_found": combos_found,
+            "total_combos": scraped_combos,
+            "output_file": "combos.txt"
+        })
+        
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e)})

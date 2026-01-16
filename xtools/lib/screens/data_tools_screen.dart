@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'dart:io';
+import 'dart:convert';
+import '../services/bot_service.dart';
 
 class DataToolsScreen extends StatefulWidget {
   const DataToolsScreen({super.key});
@@ -15,14 +16,50 @@ class _DataToolsScreenState extends State<DataToolsScreen> {
   bool _isProcessing = false;
   String? _status;
   String? _error;
-  String? _result;
+  Map<String, dynamic>? _result;
+  
+  // For Remove tool
+  final _patternController = TextEditingController();
+  
+  // For Sort tool - domain selection
+  final List<String> _availableDomains = ['gmail', 'microsoft', 'yahoo', 'aol', 'icloud', 'proton'];
+  final Set<String> _selectedDomains = {};
 
-  final Map<String, String> _tools = {
-    'Sort': 'sort.py',
-    'Filter': 'filter.py',
-    'Deduplicate': 'dedup.py',
-    'Split': 'split.py',
+  final BotService _botService = BotService();
+
+  final Map<String, Map<String, dynamic>> _tools = {
+    'Sort': {
+      'description': 'Extract emails by provider (Gmail, Microsoft, etc.)',
+      'icon': Icons.sort,
+      'color': Colors.blue,
+    },
+    'Filter': {
+      'description': 'Remove duplicate lines from file',
+      'icon': Icons.filter_list,
+      'color': Colors.green,
+    },
+    'Deduplicate': {
+      'description': 'Consolidate and deduplicate valid files',
+      'icon': Icons.content_copy,
+      'color': Colors.orange,
+    },
+    'Split': {
+      'description': 'Filter for CC/PayPal premium accounts',
+      'icon': Icons.call_split,
+      'color': Colors.purple,
+    },
+    'Remove': {
+      'description': 'Remove lines matching a pattern',
+      'icon': Icons.remove_circle,
+      'color': Colors.red,
+    },
   };
+
+  @override
+  void dispose() {
+    _patternController.dispose();
+    super.dispose();
+  }
 
   Future<void> _pickFile() async {
     try {
@@ -57,6 +94,14 @@ class _DataToolsScreenState extends State<DataToolsScreen> {
       return;
     }
 
+    // Validate Remove tool pattern
+    if (_selectedTool == 'Remove' && _patternController.text.isEmpty) {
+      setState(() {
+        _error = 'Please enter a pattern to remove';
+      });
+      return;
+    }
+
     setState(() {
       _isProcessing = true;
       _status = 'Processing...';
@@ -65,22 +110,41 @@ class _DataToolsScreenState extends State<DataToolsScreen> {
     });
 
     try {
-      final scriptPath = 'backend/python/${_tools[_selectedTool]}';
-      final result = await Process.run('python3', [scriptPath, _selectedFilePath!]);
+      Map<String, dynamic> result;
       
-      if (result.exitCode == 0) {
-        setState(() {
-          _isProcessing = false;
-          _status = 'Processing completed successfully!';
-          _result = result.stdout as String;
-        });
-      } else {
-        setState(() {
-          _isProcessing = false;
-          _error = result.stderr?.toString() ?? 'Processing failed';
-          _status = 'Processing failed';
-        });
+      switch (_selectedTool) {
+        case 'Sort':
+          final domains = _selectedDomains.isNotEmpty ? _selectedDomains.toList() : null;
+          result = await _botService.sortEmails(_selectedFilePath!, domains: domains);
+          break;
+        case 'Filter':
+          result = await _botService.filterFile(_selectedFilePath!);
+          break;
+        case 'Deduplicate':
+          result = await _botService.deduplicateFiles(_selectedFilePath!);
+          break;
+        case 'Split':
+          result = await _botService.splitForPremium(_selectedFilePath!);
+          break;
+        case 'Remove':
+          result = await _botService.removePattern(_selectedFilePath!, _patternController.text);
+          break;
+        default:
+          result = {'success': false, 'error': 'Unknown tool'};
       }
+      
+      setState(() {
+        _isProcessing = false;
+        if (result['success'] == true) {
+          _status = 'Processing completed successfully!';
+          _result = result;
+          _error = null;
+        } else {
+          _error = result['error'] ?? 'Processing failed';
+          _status = 'Processing failed';
+          _result = null;
+        }
+      });
     } catch (e) {
       setState(() {
         _isProcessing = false;
@@ -88,6 +152,91 @@ class _DataToolsScreenState extends State<DataToolsScreen> {
         _status = 'Processing failed';
       });
     }
+  }
+
+  Widget _buildToolOptions() {
+    if (_selectedTool == 'Sort') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 12),
+          const Text('Select email providers to extract:', style: TextStyle(fontWeight: FontWeight.w500)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _availableDomains.map((domain) {
+              final isSelected = _selectedDomains.contains(domain);
+              return FilterChip(
+                label: Text(domain.toUpperCase()),
+                selected: isSelected,
+                onSelected: _isProcessing ? null : (selected) {
+                  setState(() {
+                    if (selected) {
+                      _selectedDomains.add(domain);
+                    } else {
+                      _selectedDomains.remove(domain);
+                    }
+                  });
+                },
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _selectedDomains.isEmpty 
+                ? 'No selection = Gmail & Microsoft (default)' 
+                : 'Selected: ${_selectedDomains.join(", ")}',
+            style: TextStyle(color: Colors.grey[600], fontSize: 12),
+          ),
+        ],
+      );
+    } else if (_selectedTool == 'Remove') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 12),
+          TextField(
+            controller: _patternController,
+            decoration: const InputDecoration(
+              labelText: 'Pattern to remove',
+              hintText: 'e.g., gmail.com or @yahoo',
+              prefixIcon: Icon(Icons.search),
+              border: OutlineInputBorder(),
+            ),
+            enabled: !_isProcessing,
+          ),
+        ],
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
+  String _formatResult(Map<String, dynamic> result) {
+    final buffer = StringBuffer();
+    
+    result.forEach((key, value) {
+      if (key != 'success' && key != 'traceback') {
+        if (value is List) {
+          buffer.writeln('$key:');
+          for (var item in value) {
+            if (item is Map) {
+              item.forEach((k, v) => buffer.writeln('  $k: $v'));
+              buffer.writeln();
+            } else {
+              buffer.writeln('  - $item');
+            }
+          }
+        } else if (value is Map) {
+          buffer.writeln('$key:');
+          value.forEach((k, v) => buffer.writeln('  $k: $v'));
+        } else {
+          buffer.writeln('$key: $value');
+        }
+      }
+    });
+    
+    return buffer.toString();
   }
 
   @override
@@ -106,6 +255,8 @@ class _DataToolsScreenState extends State<DataToolsScreen> {
                   _status = null;
                   _error = null;
                   _result = null;
+                  _selectedDomains.clear();
+                  _patternController.clear();
                 });
               },
               tooltip: 'Clear selection',
@@ -168,18 +319,39 @@ class _DataToolsScreenState extends State<DataToolsScreen> {
                         prefixIcon: Icon(Icons.build),
                         border: OutlineInputBorder(),
                       ),
-                      items: _tools.keys.map((tool) {
+                      items: _tools.entries.map((entry) {
+                        final tool = entry.key;
+                        final info = entry.value;
                         return DropdownMenuItem(
                           value: tool,
-                          child: Text(tool),
+                          child: Row(
+                            children: [
+                              Icon(info['icon'] as IconData, color: info['color'] as Color, size: 20),
+                              const SizedBox(width: 8),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(tool),
+                                  Text(
+                                    info['description'] as String,
+                                    style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         );
                       }).toList(),
                       onChanged: _isProcessing ? null : (value) {
                         setState(() {
                           _selectedTool = value;
+                          _selectedDomains.clear();
+                          _patternController.clear();
                         });
                       },
                     ),
+                    _buildToolOptions(),
                     const SizedBox(height: 16),
                     Row(
                       children: [
@@ -206,7 +378,7 @@ class _DataToolsScreenState extends State<DataToolsScreen> {
                                 : const Icon(Icons.play_arrow),
                             label: Text(_isProcessing ? 'Processing...' : 'Process'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: _isProcessing ? Colors.grey : Colors.orange,
+                              backgroundColor: _isProcessing ? Colors.grey : (_tools[_selectedTool]?['color'] as Color?) ?? Colors.orange,
                             ),
                           ),
                         ),
@@ -234,7 +406,7 @@ class _DataToolsScreenState extends State<DataToolsScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          _status ?? _error!,
+                          _error ?? _status!,
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w500,
                           ),
@@ -266,7 +438,7 @@ class _DataToolsScreenState extends State<DataToolsScreen> {
                       padding: const EdgeInsets.all(12),
                       color: Theme.of(context).scaffoldBackgroundColor,
                       child: SelectableText(
-                        _result!,
+                        _formatResult(_result!),
                         style: const TextStyle(
                           fontFamily: 'monospace',
                           fontSize: 12,

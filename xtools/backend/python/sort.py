@@ -316,36 +316,122 @@ if __name__ == "__main__":
     main()
 # XTools FFI Integration
 import json
+from typing import List, Optional, Dict, Set
 
-def process_file_ffi(file_path: str) -> str:
-    """Parse emails via FFI"""
+# Extended domain sets for more providers
+def get_yahoo_domains() -> Set[str]:
+    """Returns Yahoo domain patterns."""
+    return {
+        'yahoo.com', 'yahoo.co.uk', 'yahoo.fr', 'yahoo.de', 'yahoo.es',
+        'yahoo.it', 'yahoo.ca', 'yahoo.com.au', 'yahoo.co.jp', 'yahoo.co.in',
+        'yahoo.com.br', 'yahoo.com.mx', 'ymail.com', 'rocketmail.com'
+    }
+
+def get_aol_domains() -> Set[str]:
+    """Returns AOL domain patterns."""
+    return {'aol.com', 'aim.com', 'aol.co.uk', 'aol.de', 'aol.fr'}
+
+def get_icloud_domains() -> Set[str]:
+    """Returns iCloud/Apple domain patterns."""
+    return {'icloud.com', 'me.com', 'mac.com'}
+
+def get_proton_domains() -> Set[str]:
+    """Returns ProtonMail domain patterns."""
+    return {'protonmail.com', 'proton.me', 'pm.me'}
+
+def get_all_domain_sets() -> Dict[str, Set[str]]:
+    """Returns all domain sets by provider."""
+    return {
+        'gmail': get_gmail_domains(),
+        'microsoft': get_microsoft_domains(),
+        'yahoo': get_yahoo_domains(),
+        'aol': get_aol_domains(),
+        'icloud': get_icloud_domains(),
+        'proton': get_proton_domains(),
+    }
+
+def process_file_ffi(file_path: str, domains: Optional[List[str]] = None) -> str:
+    """
+    Parse and extract emails from combo file via FFI.
+    
+    Args:
+        file_path: Path to the combo file
+        domains: Optional list of specific domains to extract (e.g., ['gmail.com', 'yahoo.com'])
+                 If None, extracts Gmail and Microsoft by default
+    
+    Returns:
+        JSON string with results
+    """
     try:
         if not os.path.exists(file_path):
             return json.dumps({"success": False, "error": f"File not found: {file_path}"})
         
-        gmail_domains = get_gmail_domains()
-        microsoft_domains = get_microsoft_domains()
+        # Determine which domains to extract
+        all_domain_sets = get_all_domain_sets()
+        target_domains: Set[str] = set()
         
-        gmail_count = 0
-        microsoft_count = 0
+        if domains:
+            # User specified domains - could be provider names or actual domains
+            for d in domains:
+                d_lower = d.lower().strip()
+                if d_lower in all_domain_sets:
+                    # It's a provider name
+                    target_domains.update(all_domain_sets[d_lower])
+                else:
+                    # It's an actual domain
+                    target_domains.add(d_lower)
+        else:
+            # Default: Gmail and Microsoft
+            target_domains = get_gmail_domains() | get_microsoft_domains()
+        
+        # Process file
+        results: Dict[str, List[str]] = {}
         total = 0
+        matched = 0
+        
+        # Create output directory
+        output_dir = os.path.dirname(file_path) or '.'
+        base_name = os.path.splitext(os.path.basename(file_path))[0]
         
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             for line in f:
                 total += 1
                 email, password = parse_combo_line(line)
-                if email and is_target_email(email, gmail_domains, microsoft_domains):
+                if email and password:
                     domain = email.split('@')[-1].lower()
-                    if domain in gmail_domains:
-                        gmail_count += 1
-                    elif domain in microsoft_domains:
-                        microsoft_count += 1
+                    if domain in target_domains:
+                        matched += 1
+                        if domain not in results:
+                            results[domain] = []
+                        results[domain].append(f"{email}:{password}")
+        
+        # Write output files per domain
+        output_files = []
+        for domain, combos in results.items():
+            output_file = os.path.join(output_dir, f"{base_name}_{domain.replace('.', '_')}.txt")
+            with open(output_file, 'w', encoding='utf-8') as f:
+                for combo in combos:
+                    f.write(combo + '\n')
+            output_files.append({
+                "domain": domain,
+                "count": len(combos),
+                "file": output_file
+            })
+        
+        # Also write combined output
+        combined_file = os.path.join(output_dir, f"{base_name}_extracted.txt")
+        with open(combined_file, 'w', encoding='utf-8') as f:
+            for combos in results.values():
+                for combo in combos:
+                    f.write(combo + '\n')
         
         return json.dumps({
             "success": True,
-            "total": total,
-            "gmail": gmail_count,
-            "microsoft": microsoft_count
+            "total_lines": total,
+            "matched": matched,
+            "domains_found": len(results),
+            "output_files": output_files,
+            "combined_file": combined_file
         })
     except Exception as e:
         return json.dumps({"success": False, "error": str(e)})
@@ -353,4 +439,5 @@ def process_file_ffi(file_path: str) -> str:
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1:
-        print(process_file_ffi(sys.argv[1]))
+        domains = sys.argv[2].split(',') if len(sys.argv) > 2 else None
+        print(process_file_ffi(sys.argv[1], domains))

@@ -23,6 +23,7 @@ dependencies:
   process: ^5.0.2
   ffigen: ^19.0.0
   ffi: ^2.1.0
+  path: ^1.9.0
 
 dev_dependencies:
   flutter_test:

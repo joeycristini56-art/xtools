@@ -905,24 +905,97 @@ if __name__ == "__main__":
 
 # XTools FFI Integration
 import json
+import requests
+import os
 
-def upload_file(file_path: str) -> str:
-    """Upload file to GoFile via FFI"""
+GOFILE_API_URL = "https://api.gofile.io"
+
+def get_best_server() -> str:
+    """Get the best available GoFile server for upload."""
+    try:
+        response = requests.get(f"{GOFILE_API_URL}/servers", timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("status") == "ok" and data.get("data", {}).get("servers"):
+                return data["data"]["servers"][0]["name"]
+    except Exception:
+        pass
+    return "store1"  # Default fallback
+
+def upload_file(file_path: str, folder_id: str = None, token: str = None) -> str:
+    """
+    Upload file to GoFile.io
+    
+    Args:
+        file_path: Path to the file to upload
+        folder_id: Optional folder ID to upload to
+        token: Optional GoFile API token for account uploads
+    
+    Returns:
+        JSON string with upload result
+    """
     try:
         if not os.path.exists(file_path):
             return json.dumps({"success": False, "error": f"File not found: {file_path}"})
         
-        # Would need actual GoFile API implementation
-        return json.dumps({
-            "success": True,
-            "message": "Upload would happen here",
-            "file": file_path,
-            "url": "https://gofile.io/d/placeholder"
-        })
+        file_size = os.path.getsize(file_path)
+        file_name = os.path.basename(file_path)
+        
+        # Get best server
+        server = get_best_server()
+        upload_url = f"https://{server}.gofile.io/contents/uploadfile"
+        
+        # Prepare upload
+        data = {}
+        if folder_id:
+            data["folderId"] = folder_id
+        if token:
+            data["token"] = token
+        
+        # Upload file
+        with open(file_path, 'rb') as f:
+            files = {'file': (file_name, f)}
+            response = requests.post(
+                upload_url,
+                data=data,
+                files=files,
+                timeout=300  # 5 minute timeout for large files
+            )
+        
+        if response.status_code == 200:
+            result = response.json()
+            if result.get("status") == "ok":
+                file_data = result.get("data", {})
+                return json.dumps({
+                    "success": True,
+                    "file_name": file_name,
+                    "file_size": file_size,
+                    "download_page": file_data.get("downloadPage", ""),
+                    "file_id": file_data.get("fileId", ""),
+                    "parent_folder": file_data.get("parentFolder", ""),
+                    "server": server
+                })
+            else:
+                return json.dumps({
+                    "success": False,
+                    "error": result.get("status", "Upload failed")
+                })
+        else:
+            return json.dumps({
+                "success": False,
+                "error": f"HTTP {response.status_code}: {response.text}"
+            })
+            
+    except requests.Timeout:
+        return json.dumps({"success": False, "error": "Upload timed out"})
+    except requests.RequestException as e:
+        return json.dumps({"success": False, "error": f"Network error: {str(e)}"})
     except Exception as e:
         return json.dumps({"success": False, "error": str(e)})
 
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1:
-        print(upload_file(sys.argv[1]))
+        folder_id = sys.argv[2] if len(sys.argv) > 2 else None
+        token = sys.argv[3] if len(sys.argv) > 3 else None
+        print(upload_file(sys.argv[1], folder_id, token))

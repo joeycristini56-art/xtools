@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
+import 'dart:convert';
+import '../services/bot_service.dart';
 
 class GofileScreen extends StatefulWidget {
   const GofileScreen({super.key});
@@ -13,8 +16,10 @@ class _GofileScreenState extends State<GofileScreen> {
   bool _isUploading = false;
   String? _status;
   String? _error;
-  String? _result;
+  Map<String, dynamic>? _result;
   String? _selectedFilePath;
+  
+  final BotService _botService = BotService();
 
   Future<void> _pickFile() async {
     try {
@@ -52,28 +57,26 @@ class _GofileScreenState extends State<GofileScreen> {
     });
 
     try {
-      final scriptPath = 'backend/python/gofile.py';
       final file = File(_selectedFilePath!);
       
       if (!await file.exists()) {
         throw Exception('File no longer exists');
       }
 
-      final result = await Process.run('python3', [scriptPath, _selectedFilePath!]);
+      final result = await _botService.uploadToGoFile(_selectedFilePath!);
       
-      if (result.exitCode == 0) {
-        setState(() {
-          _isUploading = false;
+      setState(() {
+        _isUploading = false;
+        if (result['success'] == true) {
           _status = 'Upload completed successfully!';
-          _result = result.stdout as String;
-        });
-      } else {
-        setState(() {
-          _isUploading = false;
-          _error = result.stderr?.toString() ?? 'Upload failed';
+          _result = result;
+          _error = null;
+        } else {
+          _error = result['error'] ?? 'Upload failed';
           _status = 'Upload failed';
-        });
-      }
+          _result = null;
+        }
+      });
     } catch (e) {
       setState(() {
         _isUploading = false;
@@ -81,6 +84,13 @@ class _GofileScreenState extends State<GofileScreen> {
         _status = 'Upload failed';
       });
     }
+  }
+  
+  void _copyToClipboard(String text) {
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Copied to clipboard!')),
+    );
   }
 
   @override
@@ -227,25 +237,41 @@ class _GofileScreenState extends State<GofileScreen> {
                       padding: const EdgeInsets.all(12),
                       child: Row(
                         children: [
-                          Icon(Icons.terminal, size: 18, color: Theme.of(context).primaryColor),
+                          Icon(Icons.link, size: 18, color: Theme.of(context).primaryColor),
                           const SizedBox(width: 8),
-                          const Text('Result', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const Text('Upload Result', style: TextStyle(fontWeight: FontWeight.bold)),
                         ],
                       ),
                     ),
                     const Divider(height: 1),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      color: Theme.of(context).scaffoldBackgroundColor,
-                      child: SelectableText(
-                        _result!,
-                        style: const TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 12,
-                          height: 1.5,
+                    if (_result!['download_page'] != null && _result!['download_page'].toString().isNotEmpty)
+                      ListTile(
+                        leading: const Icon(Icons.download, color: Colors.blue),
+                        title: const Text('Download Link'),
+                        subtitle: Text(_result!['download_page'].toString()),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.copy),
+                          onPressed: () => _copyToClipboard(_result!['download_page'].toString()),
                         ),
                       ),
-                    ),
+                    if (_result!['file_name'] != null)
+                      ListTile(
+                        leading: const Icon(Icons.insert_drive_file),
+                        title: const Text('File Name'),
+                        subtitle: Text(_result!['file_name'].toString()),
+                      ),
+                    if (_result!['file_size'] != null)
+                      ListTile(
+                        leading: const Icon(Icons.data_usage),
+                        title: const Text('File Size'),
+                        subtitle: Text('${(_result!['file_size'] / 1024 / 1024).toStringAsFixed(2)} MB'),
+                      ),
+                    if (_result!['server'] != null)
+                      ListTile(
+                        leading: const Icon(Icons.dns),
+                        title: const Text('Server'),
+                        subtitle: Text(_result!['server'].toString()),
+                      ),
                   ],
                 ),
               ),
