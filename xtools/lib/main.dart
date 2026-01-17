@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'core/app_state.dart';
 import 'screens/xcode_dashboard.dart';
+import 'screens/onboarding_screen.dart';
 
-void main() {
-  runApp(const XToolsApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final prefs = await SharedPreferences.getInstance();
+  final onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
+  runApp(XToolsApp(showOnboarding: !onboardingComplete));
 }
 
 class XToolsApp extends StatelessWidget {
-  const XToolsApp({super.key});
+  final bool showOnboarding;
+  
+  const XToolsApp({super.key, required this.showOnboarding});
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +38,7 @@ class XToolsApp extends StatelessWidget {
             elevation: 2,
           ),
         ),
-        home: const XCodeDashboard(),
+        home: showOnboarding ? const OnboardingScreen() : const XCodeDashboard(),
         debugShowCheckedModeBanner: false,
       ),
     );

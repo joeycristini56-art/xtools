@@ -1,0 +1,95 @@
+format_version: "13"
+default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
+project_type: flutter
+
+app:
+  envs:
+  - FLUTTER_VERSION: "3.24.5"
+  - GO_VERSION: "1.22"
+  - XCODE_VERSION: "15.4"
+
+workflows:
+  build-ios:
+    steps:
+    - activate-ssh-key@4:
+        run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
+    - git-clone@8: {}
+    - flutter-installer@0:
+        inputs:
+        - version: $FLUTTER_VERSION
+    - go-list@0:
+        inputs:
+        - version: $GO_VERSION
+    - script@1:
+        title: Build Go Libraries for iOS
+        inputs:
+        - content: |
+            #!/bin/bash
+            set -ex
+            
+            cd xtools/backend/go/runtime
+            go mod download
+            
+            # Build for iOS arm64
+            CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 \
+              go build -buildmode=c-archive -o ../../interpreters/ios/libxboxchecker.a ffi_export.go main.go
+            
+            cd ../toolbot
+            go mod download
+            
+            CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 \
+              go build -buildmode=c-archive -o ../../interpreters/ios/libtoolbot.a ffi_export.go main.go
+    - cocoapods-install@2: {}
+    - flutter-build@0:
+        inputs:
+        - platform: ios
+        - ios_output_type: archive
+    - xcode-archive@5:
+        inputs:
+        - project_path: $BITRISE_FLUTTER_PROJECT_LOCATION/ios/Runner.xcworkspace
+        - scheme: Runner
+        - distribution_method: development
+    - deploy-to-bitrise-io@2: {}
+
+  build-android:
+    steps:
+    - activate-ssh-key@4:
+        run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
+    - git-clone@8: {}
+    - flutter-installer@0:
+        inputs:
+        - version: $FLUTTER_VERSION
+    - go-list@0:
+        inputs:
+        - version: $GO_VERSION
+    - script@1:
+        title: Build Go Libraries for Android
+        inputs:
+        - content: |
+            #!/bin/bash
+            set -ex
+            
+            cd xtools/backend/go/runtime
+            go mod download
+            
+            # Build for Android arm64
+            GOOS=android GOARCH=arm64 CGO_ENABLED=1 \
+              CC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android33-clang \
+              go build -buildmode=c-shared -o ../../interpreters/android/arm64-v8a/libxboxchecker.so ffi_export.go main.go
+            
+            cd ../toolbot
+            go mod download
+            
+            GOOS=android GOARCH=arm64 CGO_ENABLED=1 \
+              CC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android33-clang \
+              go build -buildmode=c-shared -o ../../interpreters/android/arm64-v8a/libtoolbot.so ffi_export.go main.go
+    - flutter-build@0:
+        inputs:
+        - platform: android
+        - android_output_type: apk
+    - deploy-to-bitrise-io@2: {}
+
+meta:
+  bitrise.io:
+    stack: osx-xcode-15.4.x
+    machine_type_id: g2-m1.4core

@@ -19,11 +19,6 @@ typedef struct { const char *p; ptrdiff_t n; } _GoString_;
 /* Start of preamble from import "C" comments.  */
 
 
-#line 3 "ffi_export.go"
-
-#include <stdlib.h>
-
-#line 1 "cgo-generated-wrapper"
 
 
 /* End of preamble from import "C" comments.  */
@@ -79,9 +74,8 @@ typedef struct { void *data; GoInt len; GoInt cap; } GoSlice;
 extern "C" {
 #endif
 
-extern char* CheckXboxAccount(char* configJSON);
-extern char* GetCheckerStatus();
-extern void FreeString(char* s);
+extern __declspec(dllexport) char* InitializeToolbot(char* dataDir, char* wordlistDir);
+extern __declspec(dllexport) char* RunTelegramBot(char* apiId, char* apiHash, char* phone);
 
 #ifdef __cplusplus
 }

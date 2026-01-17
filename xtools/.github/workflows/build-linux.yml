@@ -1,0 +1,72 @@
+name: Build Linux App
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'xtools/**'
+      - '.github/workflows/build-linux.yml'
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          python3-dev \
+          libgtk-3-dev \
+          libsecret-1-dev \
+          liblzma-dev \
+          clang cmake ninja-build pkg-config
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.5'
+        channel: 'stable'
+
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22'
+
+    - name: Build Go Libraries
+      run: |
+        cd xtools/backend/go/runtime
+        go mod download
+        CGO_ENABLED=1 go build -buildmode=c-shared -o ../../interpreters/linux/libxboxchecker.so ffi_export.go main.go
+        
+        cd ../toolbot
+        go mod download
+        CGO_ENABLED=1 go build -buildmode=c-shared -o ../../interpreters/linux/libtoolbot.so ffi_export.go main.go
+
+    - name: Build Python FFI
+      run: |
+        cd xtools/backend/python
+        gcc -shared -fPIC -o ../interpreters/linux/xtools_ffi.so xtools_ffi.c \
+          -I$(python3 -c "import sysconfig; print(sysconfig.get_path('include'))") \
+          -L$(python3 -c "import sysconfig; print(sysconfig.get_config_var('LIBDIR'))") \
+          -lpython3
+
+    - name: Build Flutter App
+      run: |
+        cd xtools
+        flutter pub get
+        flutter build linux --release
+
+    - name: Copy Backend to Bundle
+      run: |
+        cp -r xtools/backend xtools/build/linux/x64/release/bundle/
+
+    - name: Upload Linux App
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-app
+        path: xtools/build/linux/x64/release/bundle/
+        retention-days: 7

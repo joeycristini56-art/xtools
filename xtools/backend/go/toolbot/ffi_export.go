@@ -39,5 +39,3 @@ result := map[string]interface{}{
 jsonBytes, _ := json.Marshal(result)
 return C.CString(string(jsonBytes))
 }
-
-func main() {}

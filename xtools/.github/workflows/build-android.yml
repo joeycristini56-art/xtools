@@ -1,0 +1,68 @@
+name: Build Android App
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'xtools/**'
+      - '.github/workflows/build-android.yml'
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.5'
+        channel: 'stable'
+
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22'
+
+    - name: Setup Android NDK
+      uses: nttld/setup-ndk@v1
+      with:
+        ndk-version: r26b
+
+    - name: Build Go Libraries for Android
+      run: |
+        cd xtools/backend/go/runtime
+        go mod download
+        
+        # Build for arm64-v8a
+        GOOS=android GOARCH=arm64 CGO_ENABLED=1 \
+          CC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android33-clang \
+          go build -buildmode=c-shared -o ../../interpreters/android/arm64-v8a/libxboxchecker.so ffi_export.go main.go
+        
+        cd ../toolbot
+        go mod download
+        
+        GOOS=android GOARCH=arm64 CGO_ENABLED=1 \
+          CC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android33-clang \
+          go build -buildmode=c-shared -o ../../interpreters/android/arm64-v8a/libtoolbot.so ffi_export.go main.go
+
+    - name: Build Flutter App
+      run: |
+        cd xtools
+        flutter pub get
+        flutter build apk --release
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-app
+        path: xtools/build/app/outputs/flutter-apk/app-release.apk
+        retention-days: 7

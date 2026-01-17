@@ -1,0 +1,56 @@
+name: Build Windows App
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'xtools/**'
+      - '.github/workflows/build-windows.yml'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.5'
+        channel: 'stable'
+
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22'
+
+    - name: Build Go Libraries
+      shell: bash
+      run: |
+        cd xtools/backend/go/runtime
+        go mod download
+        CGO_ENABLED=1 go build -buildmode=c-shared -o ../../interpreters/windows/libxboxchecker.dll ffi_export.go main.go
+        
+        cd ../toolbot
+        go mod download
+        CGO_ENABLED=1 go build -buildmode=c-shared -o ../../interpreters/windows/libtoolbot.dll ffi_export.go main.go
+
+    - name: Build Flutter App
+      run: |
+        cd xtools
+        flutter pub get
+        flutter build windows --release
+
+    - name: Copy Backend to Bundle
+      shell: bash
+      run: |
+        cp -r xtools/backend xtools/build/windows/x64/runner/Release/
+
+    - name: Upload Windows App
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-app
+        path: xtools/build/windows/x64/runner/Release/
+        retention-days: 7

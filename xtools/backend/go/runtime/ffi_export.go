@@ -129,5 +129,3 @@ func GetCheckerStatus() *C.char {
 func FreeString(s *C.char) {
 	C.free(unsafe.Pointer(s))
 }
-
-func main() {}

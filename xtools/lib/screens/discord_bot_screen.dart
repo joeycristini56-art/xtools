@@ -11,9 +11,17 @@ class DiscordBotScreen extends StatefulWidget {
 
 class _DiscordBotScreenState extends State<DiscordBotScreen> with WidgetsBindingObserver {
   final _tokenController = TextEditingController();
+  final _imapHostController = TextEditingController();
+  final _imapUserController = TextEditingController();
+  final _imapPassController = TextEditingController();
+  final _channelIdController = TextEditingController();
+  
   final _botService = BotService();
+  final _configService = ConfigService();
+  
   bool _isRunning = false;
   bool _isLoading = false;
+  bool _showImapConfig = false;
   String? _status;
   String? _error;
   String? _log;
@@ -22,12 +30,16 @@ class _DiscordBotScreenState extends State<DiscordBotScreen> with WidgetsBinding
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _loadToken();
+    _loadConfig();
   }
 
   @override
   void dispose() {
     _tokenController.dispose();
+    _imapHostController.dispose();
+    _imapUserController.dispose();
+    _imapPassController.dispose();
+    _channelIdController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -35,20 +47,31 @@ class _DiscordBotScreenState extends State<DiscordBotScreen> with WidgetsBinding
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.detached) {
+      if (_isRunning) {
+        _stopBot();
+      }
     }
   }
 
-  Future<void> _loadToken() async {
-    final configService = ConfigService();
-    final token = await configService.getDiscordToken();
+  Future<void> _loadConfig() async {
+    final token = await _configService.getDiscordToken();
     if (token != null) {
+      _tokenController.text = token;
+    }
+    
+    final imapConfig = await _configService.getDiscordIMAPConfig();
+    if (imapConfig['host'] != null) {
+      _imapHostController.text = imapConfig['host']!;
+      _imapUserController.text = imapConfig['user'] ?? '';
+      _imapPassController.text = imapConfig['pass'] ?? '';
+      _channelIdController.text = imapConfig['channelId'] ?? '';
       setState(() {
-        _tokenController.text = token;
+        _showImapConfig = true;
       });
     }
   }
 
-  Future<void> _saveToken() async {
+  Future<void> _saveConfig() async {
     if (_tokenController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Token cannot be empty')),
@@ -56,12 +79,20 @@ class _DiscordBotScreenState extends State<DiscordBotScreen> with WidgetsBinding
       return;
     }
 
-    final configService = ConfigService();
-    await configService.saveDiscordToken(_tokenController.text);
+    await _configService.saveDiscordToken(_tokenController.text);
+    
+    if (_showImapConfig && _imapHostController.text.isNotEmpty) {
+      await _configService.saveDiscordIMAPConfig(
+        _imapHostController.text,
+        _imapUserController.text,
+        _imapPassController.text,
+        _channelIdController.text,
+      );
+    }
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Discord token saved securely'), backgroundColor: Colors.green),
+        const SnackBar(content: Text('Configuration saved securely'), backgroundColor: Colors.green),
       );
     }
   }
@@ -82,18 +113,28 @@ class _DiscordBotScreenState extends State<DiscordBotScreen> with WidgetsBinding
     });
 
     try {
-      // Launch the Python script that runs the Discord bot
-      final result = await _botService.startDiscordBot(_tokenController.text);
+      final result = await _botService.startDiscordBot(
+        token: _tokenController.text,
+        imapHost: _showImapConfig ? _imapHostController.text : null,
+        imapUser: _showImapConfig ? _imapUserController.text : null,
+        imapPass: _showImapConfig ? _imapPassController.text : null,
+        channelId: _channelIdController.text.isNotEmpty ? _channelIdController.text : null,
+      );
       
       setState(() {
-        _isRunning = true;
         _isLoading = false;
-        _status = 'Bot is running';
-        _log = '''[INFO] Discord Bot started
-[INFO] $result
+        if (result['success'] == true) {
+          _isRunning = true;
+          _status = 'Bot is running';
+          _log = '''[INFO] Discord Bot started
+[INFO] ${result['message'] ?? 'Connected successfully'}
 [INFO] Monitoring emails...
 [INFO] Connected to Discord API
 [INFO] Ready to receive notifications''';
+        } else {
+          _error = result['error'] ?? 'Failed to start bot';
+          _log = '[ERROR] ${result['error']}';
+        }
       });
     } catch (e) {
       setState(() {
@@ -117,7 +158,7 @@ class _DiscordBotScreenState extends State<DiscordBotScreen> with WidgetsBinding
         _isRunning = false;
         _isLoading = false;
         _status = 'Bot stopped';
-        _log = (_log ?? '') + '\n[INFO] $result';
+        _log = (_log ?? '') + '\n[INFO] Bot stopped successfully';
       });
     } catch (e) {
       setState(() {
@@ -154,6 +195,7 @@ class _DiscordBotScreenState extends State<DiscordBotScreen> with WidgetsBinding
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Bot Token Card
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -162,7 +204,7 @@ class _DiscordBotScreenState extends State<DiscordBotScreen> with WidgetsBinding
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.key, color: Theme.of(context).primaryColor),
+                        Icon(Icons.smart_toy, color: Theme.of(context).primaryColor),
                         const SizedBox(width: 8),
                         const Text(
                           'Bot Configuration',
@@ -183,44 +225,15 @@ class _DiscordBotScreenState extends State<DiscordBotScreen> with WidgetsBinding
                       enabled: !_isRunning,
                     ),
                     const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _isRunning ? null : _saveToken,
-                            icon: const Icon(Icons.save, size: 18),
-                            label: const Text('Save Token'),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              showDialog(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('How to get token?'),
-                                  content: const Text(
-                                    '1. Go to Discord Developer Portal\n'
-                                    '2. Create a new application\n'
-                                    '3. Go to Bot section\n'
-                                    '4. Copy the token\n'
-                                    '5. Paste it here',
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: const Text('Close'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.help_outline, size: 18),
-                            label: const Text('Help'),
-                          ),
-                        ),
-                      ],
+                    TextField(
+                      controller: _channelIdController,
+                      decoration: const InputDecoration(
+                        labelText: 'Channel ID (optional)',
+                        hintText: 'Channel to send notifications',
+                        prefixIcon: Icon(Icons.tag),
+                        border: OutlineInputBorder(),
+                      ),
+                      enabled: !_isRunning,
                     ),
                   ],
                 ),
@@ -229,6 +242,135 @@ class _DiscordBotScreenState extends State<DiscordBotScreen> with WidgetsBinding
 
             const SizedBox(height: 16),
 
+            // IMAP Configuration Card
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.email, color: Theme.of(context).primaryColor),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Email Monitoring (IMAP)',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                          ],
+                        ),
+                        Switch(
+                          value: _showImapConfig,
+                          onChanged: _isRunning ? null : (value) {
+                            setState(() {
+                              _showImapConfig = value;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    if (_showImapConfig) ...[
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _imapHostController,
+                        decoration: const InputDecoration(
+                          labelText: 'IMAP Host',
+                          hintText: 'e.g., imap.gmail.com',
+                          prefixIcon: Icon(Icons.dns),
+                          border: OutlineInputBorder(),
+                        ),
+                        enabled: !_isRunning,
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _imapUserController,
+                        decoration: const InputDecoration(
+                          labelText: 'Email Address',
+                          hintText: 'your@email.com',
+                          prefixIcon: Icon(Icons.person),
+                          border: OutlineInputBorder(),
+                        ),
+                        enabled: !_isRunning,
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _imapPassController,
+                        decoration: const InputDecoration(
+                          labelText: 'Email Password / App Password',
+                          hintText: 'Enter password',
+                          prefixIcon: Icon(Icons.password),
+                          border: OutlineInputBorder(),
+                        ),
+                        obscureText: true,
+                        enabled: !_isRunning,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'For Gmail, use an App Password from Google Account settings',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Save and Help buttons
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _isRunning ? null : _saveConfig,
+                    icon: const Icon(Icons.save, size: 18),
+                    label: const Text('Save Config'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Setup Guide'),
+                          content: const SingleChildScrollView(
+                            child: Text(
+                              'Discord Bot Token:\n'
+                              '1. Go to Discord Developer Portal\n'
+                              '2. Create a new application\n'
+                              '3. Go to Bot section\n'
+                              '4. Copy the token\n\n'
+                              'IMAP Email Monitoring:\n'
+                              '1. Enable IMAP in your email settings\n'
+                              '2. For Gmail, create an App Password\n'
+                              '3. Enter your email and app password\n\n'
+                              'The bot will monitor your inbox and send notifications to Discord.',
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Close'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.help_outline, size: 18),
+                    label: const Text('Help'),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Start/Stop buttons
             Row(
               children: [
                 Expanded(
@@ -244,8 +386,9 @@ class _DiscordBotScreenState extends State<DiscordBotScreen> with WidgetsBinding
                             ),
                           )
                         : const Icon(Icons.play_arrow),
-                    label: Text(_isRunning ? 'Running' : 'Start'),
+                    label: Text(_isRunning ? 'Running' : 'Start Bot'),
                     style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                   ),
@@ -264,7 +407,7 @@ class _DiscordBotScreenState extends State<DiscordBotScreen> with WidgetsBinding
                             ),
                           )
                         : const Icon(Icons.stop),
-                    label: const Text('Stop'),
+                    label: const Text('Stop Bot'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
                       foregroundColor: Colors.white,
@@ -277,6 +420,7 @@ class _DiscordBotScreenState extends State<DiscordBotScreen> with WidgetsBinding
 
             const SizedBox(height: 16),
 
+            // Status Card
             if (_status != null || _error != null)
               Card(
                 color: _error != null
@@ -302,7 +446,7 @@ class _DiscordBotScreenState extends State<DiscordBotScreen> with WidgetsBinding
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          _status ?? _error!,
+                          _error ?? _status!,
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w500,
                           ),
@@ -315,6 +459,7 @@ class _DiscordBotScreenState extends State<DiscordBotScreen> with WidgetsBinding
 
             const SizedBox(height: 16),
 
+            // Logs Card
             if (_log != null)
               Card(
                 child: Column(
@@ -333,13 +478,16 @@ class _DiscordBotScreenState extends State<DiscordBotScreen> with WidgetsBinding
                     const Divider(height: 1),
                     Container(
                       padding: const EdgeInsets.all(12),
+                      constraints: const BoxConstraints(maxHeight: 200),
                       color: Theme.of(context).scaffoldBackgroundColor,
-                      child: SelectableText(
-                        _log!,
-                        style: const TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 12,
-                          height: 1.5,
+                      child: SingleChildScrollView(
+                        child: SelectableText(
+                          _log!,
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                            height: 1.5,
+                          ),
                         ),
                       ),
                     ),

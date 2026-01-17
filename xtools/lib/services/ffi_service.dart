@@ -15,6 +15,7 @@ class FFIService {
   DynamicLibrary? _toolbotLib;
   bool _ffiAvailable = false;
   String? _backendPath;
+  String? _lastError;
 
   FFIService._internal() {
     _initBackendPath();
@@ -24,21 +25,77 @@ class FFIService {
     // Determine backend path based on platform and execution context
     final execDir = path.dirname(Platform.resolvedExecutable);
     final possiblePaths = [
+      path.join(execDir, 'data', 'flutter_assets', 'backend'),
       path.join(execDir, 'backend'),
       path.join(execDir, '..', 'backend'),
+      path.join(execDir, '..', 'lib', 'backend'),
       path.join(Directory.current.path, 'backend'),
       'backend',
+      // For development
+      path.join(Directory.current.path, '..', 'backend'),
     ];
 
     for (final p in possiblePaths) {
-      if (Directory(p).existsSync()) {
-        _backendPath = p;
+      final absPath = path.normalize(path.absolute(p));
+      if (Directory(absPath).existsSync()) {
+        _backendPath = absPath;
         break;
       }
     }
   }
 
   String get backendPath => _backendPath ?? 'backend';
+  String? get lastError => _lastError;
+  
+  /// Check if all required libraries are available
+  Future<Map<String, bool>> checkLibraryStatus() async {
+    final status = <String, bool>{};
+    
+    // Check Python FFI library
+    String pythonLibPath;
+    if (Platform.isLinux) {
+      pythonLibPath = path.join(backendPath, 'interpreters/linux/xtools_ffi.so');
+    } else if (Platform.isWindows) {
+      pythonLibPath = path.join(backendPath, 'interpreters/windows/xtools_ffi.dll');
+    } else if (Platform.isMacOS) {
+      pythonLibPath = path.join(backendPath, 'interpreters/macos/xtools_ffi.dylib');
+    } else {
+      pythonLibPath = '';
+    }
+    status['python_ffi'] = pythonLibPath.isNotEmpty && File(pythonLibPath).existsSync();
+    
+    // Check Go Xbox checker library
+    String goLibPath;
+    if (Platform.isLinux) {
+      goLibPath = path.join(backendPath, 'interpreters/linux/libxboxchecker.so');
+    } else if (Platform.isWindows) {
+      goLibPath = path.join(backendPath, 'interpreters/windows/libxboxchecker.dll');
+    } else if (Platform.isMacOS) {
+      goLibPath = path.join(backendPath, 'interpreters/macos/libxboxchecker.dylib');
+    } else {
+      goLibPath = '';
+    }
+    status['go_xbox'] = goLibPath.isNotEmpty && File(goLibPath).existsSync();
+    
+    // Check Toolbot library
+    String toolbotLibPath;
+    if (Platform.isLinux) {
+      toolbotLibPath = path.join(backendPath, 'interpreters/linux/libtoolbot.so');
+    } else if (Platform.isWindows) {
+      toolbotLibPath = path.join(backendPath, 'interpreters/windows/libtoolbot.dll');
+    } else if (Platform.isMacOS) {
+      toolbotLibPath = path.join(backendPath, 'interpreters/macos/libtoolbot.dylib');
+    } else {
+      toolbotLibPath = '';
+    }
+    status['toolbot'] = toolbotLibPath.isNotEmpty && File(toolbotLibPath).existsSync();
+    
+    // Check Python module
+    final pythonModule = path.join(backendPath, 'python/xtools_ffi_module.py');
+    status['python_module'] = File(pythonModule).existsSync();
+    
+    return status;
+  }
 
   /// Load Python FFI library
   bool loadPythonLib() {
@@ -54,18 +111,25 @@ class FFIService {
         libPath = path.join(backendPath, 'interpreters/macos/xtools_ffi.dylib');
       } else if (Platform.isIOS) {
         libPath = path.join(backendPath, 'interpreters/ios/frameworks/xtools_ffi.framework/xtools_ffi');
+      } else if (Platform.isAndroid) {
+        // On Android, libraries are loaded from the app's native library directory
+        libPath = 'libxtools_ffi.so';
       } else {
+        _lastError = 'Unsupported platform for Python FFI';
         return false;
       }
 
-      if (File(libPath).existsSync()) {
+      if (Platform.isAndroid || File(libPath).existsSync()) {
         _pythonLib = DynamicLibrary.open(libPath);
         _ffiAvailable = true;
+        _lastError = null;
         return true;
       }
+      _lastError = 'Python FFI library not found at: $libPath';
       return false;
     } catch (e) {
-      print('Failed to load Python lib: $e');
+      _lastError = 'Failed to load Python lib: $e';
+      print(_lastError);
       return false;
     }
   }
@@ -84,17 +148,23 @@ class FFIService {
         libPath = path.join(backendPath, 'interpreters/macos/libxboxchecker.dylib');
       } else if (Platform.isIOS) {
         libPath = path.join(backendPath, 'interpreters/ios/frameworks/libxboxchecker.framework/libxboxchecker');
+      } else if (Platform.isAndroid) {
+        libPath = 'libxboxchecker.so';
       } else {
+        _lastError = 'Unsupported platform for Go FFI';
         return false;
       }
 
-      if (File(libPath).existsSync()) {
+      if (Platform.isAndroid || File(libPath).existsSync()) {
         _goLib = DynamicLibrary.open(libPath);
+        _lastError = null;
         return true;
       }
+      _lastError = 'Go library not found at: $libPath';
       return false;
     } catch (e) {
-      print('Go lib not available: $e');
+      _lastError = 'Go lib not available: $e';
+      print(_lastError);
       return false;
     }
   }
@@ -113,17 +183,23 @@ class FFIService {
         libPath = path.join(backendPath, 'interpreters/macos/libtoolbot.dylib');
       } else if (Platform.isIOS) {
         libPath = path.join(backendPath, 'interpreters/ios/frameworks/libtoolbot.framework/libtoolbot');
+      } else if (Platform.isAndroid) {
+        libPath = 'libtoolbot.so';
       } else {
+        _lastError = 'Unsupported platform for Toolbot';
         return false;
       }
 
-      if (File(libPath).existsSync()) {
+      if (Platform.isAndroid || File(libPath).existsSync()) {
         _toolbotLib = DynamicLibrary.open(libPath);
+        _lastError = null;
         return true;
       }
+      _lastError = 'Toolbot library not found at: $libPath';
       return false;
     } catch (e) {
-      print('Toolbot lib not available: $e');
+      _lastError = 'Toolbot lib not available: $e';
+      print(_lastError);
       return false;
     }
   }
@@ -353,6 +429,7 @@ class FFIService {
 
   /// Get status of all available tools
   Future<Map<String, dynamic>> getToolStatus() async {
+    final libStatus = await checkLibraryStatus();
     return {
       'success': true,
       'ffi_available': _ffiAvailable,
@@ -360,6 +437,22 @@ class FFIService {
       'go_lib_loaded': _goLib != null,
       'toolbot_lib_loaded': _toolbotLib != null,
       'backend_path': backendPath,
+      'last_error': _lastError,
+      'library_status': libStatus,
+      'platform': Platform.operatingSystem,
     };
+  }
+  
+  /// Initialize all libraries
+  Future<Map<String, dynamic>> initializeAll() async {
+    final results = <String, dynamic>{};
+    
+    results['python'] = loadPythonLib();
+    results['go'] = loadGoLib();
+    results['toolbot'] = loadToolbotLib();
+    results['backend_path'] = backendPath;
+    results['last_error'] = _lastError;
+    
+    return results;
   }
 }
